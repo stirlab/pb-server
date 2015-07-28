@@ -32,11 +32,13 @@ var PbServer = function(pb, ssh, logger) {
     cb = cb ? cb : dummyCb;
     var postCommand = function(err) {
       if (err) {
+        self.logger.error('%s command returned error: %s', command, err);
         cb(err);
       }
       else {
         var stateChangeCallback = function(err, data) {
           if (err) {
+            self.logger.error('State change returned error: %s', err);
             cb(err);
           }
           else {
@@ -64,9 +66,11 @@ var PbServer = function(pb, ssh, logger) {
 }
 
 PbServer.prototype.listDatacenters = function(cb) {
+  var self = this;
   cb = cb ? cb : dummyCb;
   var apiCallback = function(err, resp, body) {
     if (err) {
+      self.logger.error(format("ERROR: %s", err));
       cb(err);
     }
     else {
@@ -79,9 +83,11 @@ PbServer.prototype.listDatacenters = function(cb) {
 }
 
 PbServer.prototype.listServers = function(cb) {
+  var self = this;
   cb = cb ? cb : dummyCb;
   var apiCallback = function(err, resp, body) {
     if (err) {
+      self.logger.error(format("ERROR: %s", err));
       cb(err);
     }
     else {
@@ -94,9 +100,11 @@ PbServer.prototype.listServers = function(cb) {
 }
 
 PbServer.prototype.getServer = function(cb) {
+  var self = this;
   cb = cb ? cb : dummyCb;
   var apiCallback = function(err, resp, body) {
     if (err) {
+      self.logger.error(format("ERROR: %s", err));
       cb(err);
     }
     else {
@@ -131,10 +139,13 @@ PbServer.prototype.shutdownServer = function(cb) {
   var exit = function(code, stdout, stderr) {
     self.logger.debug(format("SSH command exit code: %s", code));
     if (code === 0) {
+      self.logger.debug("Shutdown command execution succeeded...");
       cb(null, code);
     }
     else {
-      cb(format('returned with error code: %d, %s', code, stderr));
+      var message = format('SSH command returned with error code: %d, %s', code, stderr);
+      self.logger.error(message);
+      cb(message);
     }
   }
   var execConfig = {
@@ -149,6 +160,8 @@ PbServer.prototype.shutdownServer = function(cb) {
       cb(err);
     },
   }
+  // Executing shutdown without backgrounding hangs, backgrounding the command
+  // allows the shutdown to proceed, and our SSH command to get a return value.
   ssh.exec('shutdown -P now shutdown-now&', execConfig).start(startConfig);
 }
 
