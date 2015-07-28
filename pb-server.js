@@ -20,6 +20,41 @@ var PbServer = function(pb, ssh, logger) {
 
   libpb.setauth(this.pb.username, this.pb.password);
   libpb.setdepth(this.pb.depth);
+
+  var self = this;
+  var _tracked = function(command, serverToState, vmToState, message, cb) {
+    cb = cb ? cb : dummyCb;
+    var postCommand = function(err) {
+      if (err) {
+        cb(err);
+      }
+      else {
+        var stateChangeCallback = function(err, data) {
+          if (err) {
+            cb(err);
+          }
+          else {
+            self.logger.log(message);
+            cb(null, data);
+          }
+        }
+        self.serverStateChange(serverToState, vmToState, stateChangeCallback);
+      }
+    }
+    self[command](postCommand);
+  }
+
+  this.startServerTracked = function(cb) {
+    _tracked('startServer', 'AVAILABLE', 'RUNNING', 'Server started!', cb);
+  }
+
+  this.shutdownServerTracked = function(cb) {
+    _tracked('shutdownServer', 'AVAILABLE', 'SHUTOFF', 'Server shut down!', cb);
+  }
+
+  this.stopServerTracked = function(cb) {
+    _tracked('stopServer', 'INACTIVE', 'SHUTOFF', 'Server stopped!', cb);
+  }
 }
 
 PbServer.prototype.listDatacenters = function(cb) {
@@ -171,75 +206,6 @@ PbServer.prototype.checkCommand = function(command, cb) {
   }
   check();
   var checkCommand = setInterval(check, this.stateChangeQueryInterval);
-}
-
-PbServer.prototype.startServerTracked = function(cb) {
-  var self = this;
-  cb = cb ? cb : dummyCb;
-  var postStartCommand = function(err) {
-    if (err) {
-      cb(err);
-    }
-    else {
-      var started = function(err, data) {
-        if (err) {
-          cb(err);
-        }
-        else {
-          self.logger.log("server started!");
-          cb(null, data);
-        }
-      }
-      self.serverStateChange('AVAILABLE', 'RUNNING', started);
-    }
-  }
-  this.startServer(postStartCommand);
-}
-
-PbServer.prototype.shutdownServerTracked = function(cb) {
-  var self = this;
-  cb = cb ? cb : dummyCb;
-  var postShutdownCommand = function(err) {
-    if (err) {
-      cb(err);
-    }
-    else {
-      var shutdown = function(err, data) {
-        if (err) {
-          cb(err);
-        }
-        else {
-          self.logger.log("server shut down!");
-          cb(null, data);
-        }
-      }
-      self.serverStateChange('AVAILABLE', 'SHUTOFF', shutdown);
-    }
-  }
-  this.shutdownServer(postShutdownCommand);
-}
-
-PbServer.prototype.stopServerTracked = function(cb) {
-  var self = this;
-  cb = cb ? cb : dummyCb;
-  var postStopCommand = function(err) {
-    if (err) {
-      cb(err);
-    }
-    else {
-      var stopped = function(err, data) {
-        if (err) {
-          cb(err);
-        }
-        else {
-          self.logger.log("server stopped!");
-          cb(null, data);
-        }
-      }
-      self.serverStateChange('INACTIVE', 'SHUTOFF', stopped);
-    }
-  }
-  this.stopServer(postStopCommand);
 }
 
 if (module.exports) {
