@@ -1,0 +1,23 @@
+{ "name" : "pb-server"
+, "description" : "Small library to manage safely starting and stopping a profitbricks.com virtual server."
+, "private": true
+, "keywords": []
+, "homepage" : "https://github.com/thehunmonkgroup/pb-server"
+, "version" : "0.0.1"
+, "engines" : { "node" : ">=0.8.0" }
+, "dependencies": {
+    "simple-ssh": "0.8.6"
+    , "libprofitbricks": "1.6.223-rel"
+  }
+, "maintainers" :
+  [ { "name": "Chad Phillips"
+    , "email": "chad@apartmentlines.com"
+    }
+  ]
+, "licenses" : [ { "type" : "MIT" } ]
+, "repository" : {
+    "type" : "git"
+    , "url" : "https://github.com/thehunmonkgroup/pb-server.git"
+  }
+, "main" : "./pb-server"
+}
