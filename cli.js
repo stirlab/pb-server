@@ -28,11 +28,19 @@ switch (args[0]) {
   case 'start':
     pb.startServerTracked();
     break;
+  case 'shutdown':
+    pb.shutdownServerTracked();
+    break;
   case 'stop':
     pb.stopServerTracked();
     break;
-  case 'shutdown':
-    pb.shutdownServerTracked();
+  case 'shutdown-stop':
+    var cb = function(err, data) {
+      // Even if there was a failure in shutdown, we still want to stop, so no
+      // need to verify what happened here.
+      pb.stopServerTracked();
+    }
+    pb.shutdownServerTracked(cb);
     break;
   case 'status':
     var cb = function(err, data) {
@@ -81,5 +89,5 @@ switch (args[0]) {
     pb.listServers(cb);
     break;
   default:
-    log("Usage: " + program + " <start|stop|status|check-fs|datacenters|servers>");
+    log("Usage: " + program + " <start|shutdown|stop|shutdown-stop|status|check-fs|datacenters|servers>");
 }
