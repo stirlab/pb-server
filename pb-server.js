@@ -58,15 +58,48 @@ var PbServer = function(pb, ssh, logger) {
 }
 
 PbServer.prototype.listDatacenters = function(cb) {
-  libpb.listDatacenters(cb);
+  cb = cb ? cb : dummyCb;
+  var apiCallback = function(err, resp, body) {
+    if (err) {
+      cb(err);
+    }
+    else {
+      var data = JSON.parse(body);
+      cb(null, data);
+    }
+  }
+  this.logger.log("Getting datacenter info...");
+  libpb.listDatacenters(apiCallback);
 }
 
 PbServer.prototype.listServers = function(cb) {
-  libpb.listServers(this.pb.datacenterId, cb)
+  cb = cb ? cb : dummyCb;
+  var apiCallback = function(err, resp, body) {
+    if (err) {
+      cb(err);
+    }
+    else {
+      var data = JSON.parse(body);
+      cb(null, data);
+    }
+  }
+  this.logger.log("Listing servers...");
+  libpb.listServers(this.pb.datacenterId, apiCallback)
 }
 
 PbServer.prototype.getServer = function(cb) {
-  libpb.getServer(this.pb.datacenterId, this.pb.serverId, cb)
+  cb = cb ? cb : dummyCb;
+  var apiCallback = function(err, resp, body) {
+    if (err) {
+      cb(err);
+    }
+    else {
+      var data = JSON.parse(body);
+      cb(null, data);
+    }
+  }
+  this.logger.log("Getting server status...");
+  libpb.getServer(this.pb.datacenterId, this.pb.serverId, apiCallback)
 }
 
 PbServer.prototype.startServer = function(cb) {

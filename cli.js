@@ -15,12 +15,12 @@ var config = require('./config');
 
 var pb = new PbServer(config.pb, config.ssh);
 
-var debugCallback = function(err, res, body) {
+var debugCallback = function(err, data) {
   if (err) {
     log("ERROR: " + String(err));
   }
   else {
-    log(body);
+    log(data);
   }
 }
 
@@ -35,13 +35,11 @@ switch (args[0]) {
     pb.shutdownServerTracked();
     break;
   case 'status':
-    log("Getting server status...");
-    var cb = function(err, res, body) {
+    var cb = function(err, data) {
       if (err) {
         log(format("ERROR: %s", err));
       }
       else {
-        var data = JSON.parse(body);
         var serverState = data.metadata.state;
         var vmState = data.properties.vmState;
         log(format("Power state: %s", serverState));
@@ -55,12 +53,32 @@ switch (args[0]) {
     pb.checkCommand("service freeswitch status");
     break;
   case 'datacenters':
-    log("Getting datacenter info...");
-    pb.listDatacenters(debugCallback);
+    var cb = function(err, data) {
+      if (err) {
+        log(format("ERROR: %s", err));
+      }
+      else {
+        var iterator = function (val, idx, array) {
+          log(format("%s: %s", val.properties.name, val.id));
+        }
+        data.items.forEach(iterator);
+      }
+    }
+    pb.listDatacenters(cb);
     break;
   case 'servers':
-    log("Listing servers...");
-    pb.listServers(debugCallback);
+    var cb = function(err, data) {
+      if (err) {
+        log(format("ERROR: %s", err));
+      }
+      else {
+        var iterator = function (val, idx, array) {
+          log(format("%s: %s", val.properties.name, val.id));
+        }
+        data.items.forEach(iterator);
+      }
+    }
+    pb.listServers(cb);
     break;
   default:
     log("Usage: " + program + " <start|stop|status|check-fs|datacenters|servers>");
