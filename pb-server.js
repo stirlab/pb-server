@@ -173,8 +173,8 @@ PbServer.prototype.serverStateChange = function(serverToState, vmToState, cb) {
         var vmState = data.properties.vmState;
         self.logger.debug(format("Attempt #%d", count));
         self.logger.debug("-------------------------------------");
-        self.logger.debug(format("Power state: %s", serverState));
-        self.logger.debug(format("Server state: %s", vmState));
+        self.logger.debug(format("Server state: %s", serverState));
+        self.logger.debug(format("VM state: %s", vmState));
         self.logger.debug("-------------------------------------");
         if (serverState == serverToState && vmState == vmToState) {
           self.logger.info(format("State change to (%s, %s) complete", serverToState , vmToState));
