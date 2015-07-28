@@ -50,8 +50,8 @@ switch (args[0]) {
       else {
         var serverState = data.metadata.state;
         var vmState = data.properties.vmState;
-        log(format("Power state: %s", serverState));
-        log(format("Server state: %s", vmState));
+        log(format("Server state: %s", serverState));
+        log(format("VM state: %s", vmState));
       }
     }
     pb.getServer(cb);
