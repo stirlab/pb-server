@@ -259,6 +259,29 @@ PbServer.prototype.checkCommand = function(command, cb) {
   var checkCommand = setInterval(check, this.stateChangeQueryInterval);
 }
 
+PbServer.prototype.updateServer = function(profile, cb) {
+  var self = this;
+  cb = cb ? cb : dummyCb;
+  var apiCallback = function(err, resp, body) {
+    if (err) {
+      self.logger.error(format("ERROR: %s", err));
+      cb(err);
+    }
+    else {
+      var data = JSON.parse(body);
+      cb(null, data);
+    }
+  }
+  this.logger.info(format("Updating server to profile: %s", profile));
+  var data = this.pb.profiles[profile];
+  if (data) {
+    libpb.updateServer(this.pb.datacenterId, this.pb.serverId, data, apiCallback);
+  }
+  else {
+    this.logger.error(format("ERROR: profile '%s' does not exist", profile));
+  }
+}
+
 if (module.exports) {
   module.exports = PbServer;
 }
