@@ -41,7 +41,7 @@ switch (args[0]) {
   case 'stop':
     pb.stopServerTracked();
     break;
-  case 'shutdown-stop':
+  case 'safe-stop':
     var cb = function(err, data) {
       // Even if there was a failure in shutdown, we still want to stop, so no
       // need to verify what happened here.
@@ -120,5 +120,5 @@ switch (args[0]) {
     pb.listServers(cb);
     break;
   default:
-    log("Usage: " + program + " <start|shutdown|stop|shutdown-stop|status|update <profile>|check-fs|datacenters|servers>");
+    log("Usage: " + program + " <start|shutdown|stop|safe-stop|status|update <profile>|check-fs|datacenters|servers>");
 }
