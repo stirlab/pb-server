@@ -28,7 +28,7 @@ var PbServer = function(pb, ssh, logger) {
   libpb.setdepth(this.pb.depth);
 
   var self = this;
-  var _tracked = function(command, serverToState, vmToState, message, cb) {
+  var _tracked = function(command, machineToState, serverToState, message, cb) {
     cb = cb ? cb : dummyCb;
     var postCommand = function(err) {
       if (err) {
@@ -46,7 +46,7 @@ var PbServer = function(pb, ssh, logger) {
             cb(null, data);
           }
         }
-        self.serverStateChange(serverToState, vmToState, stateChangeCallback);
+        self.serverStateChange(machineToState, serverToState, stateChangeCallback);
       }
     }
     self[command](postCommand);
@@ -165,7 +165,7 @@ PbServer.prototype.shutdownServer = function(cb) {
   ssh.exec('shutdown -P now shutdown-now&', execConfig).start(startConfig);
 }
 
-PbServer.prototype.serverStateChange = function(serverToState, vmToState, cb) {
+PbServer.prototype.serverStateChange = function(machineToState, serverToState, cb) {
   var self = this;
   cb = cb ? cb : dummyCb;
   var count = 1;
@@ -182,15 +182,15 @@ PbServer.prototype.serverStateChange = function(serverToState, vmToState, cb) {
         cb(message);
       }
       else {
-        var serverState = data.metadata.state;
-        var vmState = data.properties.vmState;
+        var machineState = data.metadata.state;
+        var serverState = data.properties.vmState;
         self.logger.debug(format("Attempt #%d", count));
         self.logger.debug("-------------------------------------");
+        self.logger.debug(format("Machine state: %s", machineState));
         self.logger.debug(format("Server state: %s", serverState));
-        self.logger.debug(format("VM state: %s", vmState));
         self.logger.debug("-------------------------------------");
-        if (serverState == serverToState && vmState == vmToState) {
-          self.logger.info(format("State change to (%s, %s) complete", serverToState , vmToState));
+        if (machineState == machineToState && serverState == serverToState) {
+          self.logger.info(format("State change to (%s, %s) complete", machineToState , serverToState));
           clearInterval(serverStateChange);
           cb(null, data);
         }
@@ -201,7 +201,7 @@ PbServer.prototype.serverStateChange = function(serverToState, vmToState, cb) {
   var get = function() {
     self.getServer(checkState);
   }
-  this.logger.info(format("Waiting for server state to change to (%s, %s)", serverToState , vmToState));
+  this.logger.info(format("Waiting for server state to change to (%s, %s)", machineToState , serverToState));
   get();
   var serverStateChange = setInterval(get, this.stateChangeQueryInterval);
 }
