@@ -275,7 +275,10 @@ PbServer.prototype.updateServer = function(profile, cb) {
   this.logger.info(format("Updating server to profile: %s", profile));
   var data = this.pb.profiles[profile];
   if (data) {
-    libpb.updateServer(this.pb.datacenterId, this.pb.serverId, data, apiCallback);
+    var updateData = {
+      properties: data,
+    }
+    libpb.updateServer(this.pb.datacenterId, this.pb.serverId, updateData, apiCallback);
   }
   else {
     this.logger.error(format("ERROR: profile '%s' does not exist", profile));

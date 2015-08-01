@@ -55,12 +55,14 @@ switch (args[0]) {
         log(format("ERROR: %s", err));
       }
       else {
-        var serverState = data.metadata.state;
-        var vmState = data.properties.vmState;
+        var name = data.properties.name;
+        var machineState = data.metadata.state;
+        var serverState = data.properties.vmState;
         var cores = data.properties.cores;
         var ram = data.properties.ram;
+        log(format("Name: %s", name));
+        log(format("Machine state: %s", machineState));
         log(format("Server state: %s", serverState));
-        log(format("VM state: %s", vmState));
         log(format("Cores: %d", cores));
         log(format("RAM: %s", bytesToSize(ram * 1000000)));
       }
@@ -75,11 +77,12 @@ switch (args[0]) {
       }
       else {
         log("Server updated!");
-        //var cores = data.properties.cores;
-        //var ram = data.properties.ram;
-        //log(format("Cores: %d", cores));
-        //log(format("RAM: %s", bytesToSize(ram * 1000000)));
-        log(data);
+        var name = data.properties.name;
+        var cores = data.properties.cores;
+        var ram = data.properties.ram;
+        log(format("Name: %s", name));
+        log(format("Cores: %d", cores));
+        log(format("RAM: %s", bytesToSize(ram * 1000000)));
       }
     }
     pb.updateServer(profile, cb);
@@ -117,5 +120,5 @@ switch (args[0]) {
     pb.listServers(cb);
     break;
   default:
-    log("Usage: " + program + " <start|shutdown|stop|shutdown-stop|status|check-fs|datacenters|servers>");
+    log("Usage: " + program + " <start|shutdown|stop|shutdown-stop|status|update <profile>|check-fs|datacenters|servers>");
 }
