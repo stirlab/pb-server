@@ -1,0 +1,26 @@
+module.exports = {
+  pb: {
+    username: 'your profitbricks username',
+    password: 'your profitbricks password',
+    depth: 1,
+    datacenterId: 'datacenter id where the server is located',
+    serverId: 'server id',
+    profiles: {
+      dev: {
+        cores: 1,
+        ram: 2048,
+      },
+      prod: {
+        cores: 8,
+        ram: 10240,
+      },
+    },
+  },
+  ssh: {
+    host: 'hostname to reach server via SSH',
+    port: 22,
+    user: 'root',
+    key: 'full path to private key for SSH access',
+  },
+}
+
