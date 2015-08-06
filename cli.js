@@ -120,5 +120,5 @@ switch (args[0]) {
     pb.listServers(cb);
     break;
   default:
-    log("Usage: " + program + " <start|shutdown|stop|safe-stop|status|update <profile>|check-fs|datacenters|servers>");
+    log("Usage: node " + program + " <start|shutdown|stop|safe-stop|status|update <profile>|check-fs|datacenters|servers>");
 }
