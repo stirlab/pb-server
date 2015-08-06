@@ -5,6 +5,7 @@ Small library to manage safely starting and stopping a profitbricks.com virtual 
 ```
 git clone https://github.com/thehunmonkgroup/pb-server.git
 cd pb-server
+npm install
 cp config.js.sample config.js
 ```
 
