@@ -11,6 +11,8 @@ var SERVER_QUERY_INTERVAL = 5000;
 var MAX_QUERY_ATTEMPTS = 36;
 
 var PbServer = function(pb, ssh, logger) {
+  this.pbHandler = libpb;
+  this.sshHandler = SSH;
   this.pb = pb;
   this.ssh = ssh;
   if (logger) {
@@ -24,13 +26,13 @@ var PbServer = function(pb, ssh, logger) {
   this.maxStateChangeQueryAttempts = pb.maxStateChangeQueryAttempts ? pb.maxStateChangeQueryAttempts : MAX_QUERY_ATTEMPTS;
   this.sshKey = ssh.key ? fs.readFileSync(ssh.key) : null;
 
-  libpb.setauth(this.pb.username, this.pb.password);
-  libpb.setdepth(this.pb.depth);
+  this.pbHandler.setauth(this.pb.username, this.pb.password);
+  this.pbHandler.setdepth(this.pb.depth);
 
   var self = this;
   var _tracked = function(command, machineToState, serverToState, message, cb) {
     cb = cb ? cb : dummyCb;
-    var postCommand = function(err) {
+    var postCommand = function(err, resp, body) {
       if (err) {
         self.logger.error('%s command returned error: %s', command, err);
         cb(err);
@@ -65,6 +67,11 @@ var PbServer = function(pb, ssh, logger) {
   }
 }
 
+PbServer.prototype.setHandlers = function(handlers) {
+  this.pbHandler = handlers.pbHandler;
+  this.sshHandler = handlers.sshHandler;
+}
+
 PbServer.prototype.listDatacenters = function(cb) {
   var self = this;
   cb = cb ? cb : dummyCb;
@@ -79,7 +86,7 @@ PbServer.prototype.listDatacenters = function(cb) {
     }
   }
   this.logger.info("Getting datacenter info...");
-  libpb.listDatacenters(apiCallback);
+  this.pbHandler.listDatacenters(apiCallback);
 }
 
 PbServer.prototype.listServers = function(cb) {
@@ -96,7 +103,7 @@ PbServer.prototype.listServers = function(cb) {
     }
   }
   this.logger.info("Listing servers...");
-  libpb.listServers(this.pb.datacenterId, apiCallback)
+  this.pbHandler.listServers(this.pb.datacenterId, apiCallback)
 }
 
 PbServer.prototype.getServer = function(cb) {
@@ -113,24 +120,24 @@ PbServer.prototype.getServer = function(cb) {
     }
   }
   this.logger.info("Getting server status...");
-  libpb.getServer(this.pb.datacenterId, this.pb.serverId, apiCallback)
+  this.pbHandler.getServer(this.pb.datacenterId, this.pb.serverId, apiCallback)
 }
 
 PbServer.prototype.startServer = function(cb) {
   this.logger.info("Starting server...");
-  libpb.startServer(this.pb.datacenterId, this.pb.serverId, cb)
+  this.pbHandler.startServer(this.pb.datacenterId, this.pb.serverId, cb)
 }
 
 PbServer.prototype.stopServer = function(cb) {
   this.logger.info("Powering off server...");
-  libpb.stopServer(this.pb.datacenterId, this.pb.serverId, cb)
+  this.pbHandler.stopServer(this.pb.datacenterId, this.pb.serverId, cb)
 }
 
 PbServer.prototype.shutdownServer = function(cb) {
   var self = this;
   cb = cb ? cb : dummyCb;
   this.logger.info("Shutting down server...");
-  var ssh = new SSH({
+  var ssh = new this.sshHandler({
     host: this.ssh.host,
     port: this.ssh.port,
     user: this.ssh.user,
@@ -162,7 +169,9 @@ PbServer.prototype.shutdownServer = function(cb) {
   }
   // Executing shutdown without backgrounding hangs, backgrounding the command
   // allows the shutdown to proceed, and our SSH command to get a return value.
-  ssh.exec('shutdown -P now shutdown-now&', execConfig).start(startConfig);
+  // NOTE: These commands kept separate to support the mock functionality.
+  ssh.exec('shutdown -P now shutdown-now&', execConfig);
+  ssh.start(startConfig);
 }
 
 PbServer.prototype.serverStateChange = function(machineToState, serverToState, cb) {
@@ -244,14 +253,16 @@ PbServer.prototype.checkCommand = function(command, cb) {
     }
     else {
       self.logger.debug(format("Attempt #%d", count));
-      var ssh = new SSH({
+      var ssh = new this.sshHandler({
         host: self.ssh.host,
         port: self.ssh.port,
         user: self.ssh.user,
         key: self.sshKey,
         timeout: timeout,
       });
-      ssh.exec(command, execConfig).start(startConfig);
+      // NOTE: These commands kept separate to support the mock functionality.
+      ssh.exec(command, execConfig);
+      ssh.start(startConfig);
       count++;
     }
   }
@@ -278,7 +289,7 @@ PbServer.prototype.updateServer = function(profile, cb) {
     var updateData = {
       properties: data,
     }
-    libpb.updateServer(this.pb.datacenterId, this.pb.serverId, updateData, apiCallback);
+    this.pbHandler.updateServer(this.pb.datacenterId, this.pb.serverId, updateData, apiCallback);
   }
   else {
     this.logger.error(format("ERROR: profile '%s' does not exist", profile));
