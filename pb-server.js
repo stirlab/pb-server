@@ -3,6 +3,7 @@ var util = require('util');
 var libpb = require('libprofitbricks');
 var SSH = require('simple-ssh');
 var format = util.format;
+var mockHandlers = require('./mock-handlers')();
 
 var dummyCb = function() {};
 // 5 seconds.
@@ -13,8 +14,10 @@ var MAX_QUERY_ATTEMPTS = 36;
 var PbServer = function(pb, ssh, logger) {
   this.pbHandler = libpb;
   this.sshHandler = SSH;
+  this.mockHandlers = mockHandlers;
   this.pb = pb;
   this.ssh = ssh;
+
   if (logger) {
     this.logger = logger;
   }
@@ -67,9 +70,13 @@ var PbServer = function(pb, ssh, logger) {
   }
 }
 
-PbServer.prototype.setHandlers = function(handlers) {
-  this.pbHandler = handlers.pbHandler;
-  this.sshHandler = handlers.sshHandler;
+PbServer.prototype.setMockHandlers = function(handlers) {
+  this.mockHandlers = handlers;
+}
+
+PbServer.prototype.useMockHandlers = function() {
+  this.pbHandler = this.mockHandlers.pbHandler;
+  this.sshHandler = this.mockHandlers.sshHandler;
 }
 
 PbServer.prototype.listDatacenters = function(cb) {

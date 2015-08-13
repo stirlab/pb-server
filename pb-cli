@@ -16,9 +16,8 @@ var log = function() {
 var config = require('./config');
 
 var pb = new PbServer(config.pb, config.ssh);
-var mockHandlers = require('./mock-handlers')();
 // Uncomment this to use the mock handlers.
-//pb.setHandlers(mockHandlers);
+//pb.useMockHandlers();
 
 var debugCallback = function(err, data) {
   if (err) {
