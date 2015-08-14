@@ -1,20 +1,22 @@
 var Factory = function(logger) {
   var machineState = 'INACTIVE';
   var serverState = 'SHUTOFF';
+  var successStates = ['start', 'stop', 'update', 'service'];
+
+  var setSuccessStates = function(states) {
+    if (typeof states !== 'undefined') {
+      successStates = states;
+    }
+  }
+
   var PbHandler = function() {
     // Allows to have the mock respond with either failure or success.
     // Only applies to start, stop, update methods.
-    var successStates = ['start', 'stop', 'update'];
     var that = this;
     var cores = 1;
     var ram = 2048;
     // Milliseconds to simulate time to run a command.
     var commandExecutionTime = 1000;
-    var setSuccessStates = function(states) {
-      if (typeof states !== 'undefined') {
-        successStates = states;
-      }
-    }
     var setMachineState = function(state) {
       machineState = state;
     }
@@ -23,9 +25,6 @@ var Factory = function(logger) {
     }
     var setCommandExecutionTime = function(milliseconds) {
       commandExecutionTime = milliseconds;
-    }
-    this.setSuccessStates = function(states) {
-      setSuccessStates(states);
     }
     this.setMachineState = function(state) {
       setMachineState(state);
@@ -148,17 +147,27 @@ var Factory = function(logger) {
     var handler = {
       exec: function exec(command, config) {
         logger.debug(arguments.callee.name + " called");
-        config && config.exit && config.exit(0, '', '');
         // This is a little clunky, but I don't see any elegant way to
-        // penetrate the shutdown command with these mocks.
-        if (command == 'shutdown -P now shutdown-now&') {
-          machineState = 'AVAILABLE';
-          serverState = 'RUNNING';
-          var serverShutdown = function() {
+        // penetrate more with these mocks.
+        var baseCommand = command.split(/\s+/)[0];
+        switch(baseCommand) {
+          case 'shutdown':
+            config && config.exit && config.exit(0, '', '');
             machineState = 'AVAILABLE';
-            serverState = 'SHUTOFF';
-          }
-          setTimeout(serverShutdown, commandExecutionTime * 3);
+            serverState = 'RUNNING';
+            var serverShutdown = function() {
+              machineState = 'AVAILABLE';
+              serverState = 'SHUTOFF';
+            }
+            setTimeout(serverShutdown, commandExecutionTime * 3);
+            break;
+          case 'service':
+            var exit = successStates.indexOf('service') !== -1 ? 0 : 1;
+            var serverServiceStatus = function() {
+              config && config.exit && config.exit(exit, '', '');
+            }
+            setTimeout(serverServiceStatus, commandExecutionTime);
+            break;
         }
       },
       start: function setdepth(config) {
@@ -179,6 +188,7 @@ var Factory = function(logger) {
   return {
     pbHandler: new PbHandler(),
     sshHandler: SshHandler,
+    setSuccessStates: setSuccessStates,
   }
 
 }

@@ -18,7 +18,7 @@ var config = require('./config');
 var pb = new PbServer(config.pb, config.ssh);
 // Uncomment this to use the mock handlers, with success responses.
 // Actions not included in the array will mock a failure state.
-//pb.useMockHandlers(['start', 'stop', 'update']);
+//pb.useMockHandlers(['start', 'stop', 'update', 'service']);
 
 var debugCallback = function(err, data) {
   if (err) {
@@ -77,10 +77,7 @@ switch (args[0]) {
   case 'update':
     var profile = args[1];
     var cb = function(err, data) {
-      if (err) {
-        log(format("ERROR: %s", err));
-      }
-      else {
+      if (!err) {
         log("Server updated!");
         var name = data.properties.name;
         var cores = data.properties.cores;

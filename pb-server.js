@@ -76,8 +76,10 @@ PbServer.prototype.setMockHandlers = function(handlers) {
 }
 
 PbServer.prototype.useMockHandlers = function(successStates) {
+  // Mocks shouldn't need any more attempts than this.
+  this.maxStateChangeQueryAttempts = 2;
+  this.mockHandlers.setSuccessStates(successStates);
   this.pbHandler = this.mockHandlers.pbHandler;
-  this.pbHandler.setSuccessStates(successStates);
   this.sshHandler = this.mockHandlers.sshHandler;
 }
 
