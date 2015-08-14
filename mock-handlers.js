@@ -4,14 +4,16 @@ var Factory = function(logger) {
   var PbHandler = function() {
     // Allows to have the mock respond with either failure or success.
     // Only applies to start, stop, update methods.
-    var successState = true;
+    var successStates = ['start', 'stop', 'update'];
     var that = this;
     var cores = 1;
     var ram = 2048;
     // Milliseconds to simulate time to run a command.
     var commandExecutionTime = 1000;
-    var setSuccessState = function(bool) {
-      successState = bool;
+    var setSuccessStates = function(states) {
+      if (typeof states !== 'undefined') {
+        successStates = states;
+      }
     }
     var setMachineState = function(state) {
       machineState = state;
@@ -22,8 +24,8 @@ var Factory = function(logger) {
     var setCommandExecutionTime = function(milliseconds) {
       commandExecutionTime = milliseconds;
     }
-    this.setSuccessState = function(bool) {
-      setSuccessState(bool);
+    this.setSuccessStates = function(states) {
+      setSuccessStates(states);
     }
     this.setMachineState = function(state) {
       setMachineState(state);
@@ -70,11 +72,12 @@ var Factory = function(logger) {
         machineState = 'INACTIVE';
         serverState = 'SHUTOFF';
         var startServer = function() {
-          var err = successState ? null : 'error';
-          var statusCode = successState ? 202 : 500;
+          var success = successStates.indexOf('start') !== -1;
+          var err = success ? null : 'error';
+          var statusCode = success ? 202 : 500;
           apiCallback(err, {statusCode: statusCode}, '');
           var serverRunning = function() {
-            if (successState) {
+            if (success) {
               machineState = 'AVAILABLE';
               serverState = 'RUNNING';
             }
@@ -88,11 +91,12 @@ var Factory = function(logger) {
         machineState = 'AVAILABLE';
         serverState = 'SHUTOFF';
         var stopServer = function() {
-          var err = successState ? null : 'error';
-          var statusCode = successState ? 202 : 500;
+          var success = successStates.indexOf('stop') !== -1;
+          var err = success ? null : 'error';
+          var statusCode = success ? 202 : 500;
           apiCallback(err, {statusCode: statusCode}, '');
           var serverStopped = function() {
-            if (successState) {
+            if (success) {
               machineState = 'INACTIVE';
               serverState = 'SHUTOFF';
             }
@@ -104,10 +108,11 @@ var Factory = function(logger) {
       updateServer: function updateServer(datacenterId, serverId, updateData, apiCallback) {
         logger.debug(arguments.callee.name + " called");
         var updateServer = function() {
-          var err = successState ? null : 'error';
+          var success = successStates.indexOf('update') !== -1;
+          var err = success ? null : 'error';
           var statusCode = 500;
           var data = null;
-          if (successState) {
+          if (success) {
             statusCode = 202;
             data = {
               properties: {

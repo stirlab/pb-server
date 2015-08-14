@@ -17,9 +17,8 @@ var config = require('./config');
 
 var pb = new PbServer(config.pb, config.ssh);
 // Uncomment this to use the mock handlers, with success responses.
-//pb.useMockHandlers(true);
-// Uncomment this to use the mock handlers, with failure responses.
-//pb.useMockHandlers(false);
+// Actions not included in the array will mock a failure state.
+//pb.useMockHandlers(['start', 'stop', 'update']);
 
 var debugCallback = function(err, data) {
   if (err) {
