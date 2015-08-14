@@ -262,7 +262,7 @@ PbServer.prototype.checkCommand = function(command, cb) {
     }
     else {
       self.logger.debug(format("Attempt #%d", count));
-      var ssh = new this.sshHandler({
+      var ssh = new self.sshHandler({
         host: self.ssh.host,
         port: self.ssh.port,
         user: self.ssh.user,
