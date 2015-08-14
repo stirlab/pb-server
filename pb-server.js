@@ -74,8 +74,9 @@ PbServer.prototype.setMockHandlers = function(handlers) {
   this.mockHandlers = handlers;
 }
 
-PbServer.prototype.useMockHandlers = function() {
+PbServer.prototype.useMockHandlers = function(successState) {
   this.pbHandler = this.mockHandlers.pbHandler;
+  this.pbHandler.setSuccessState(successState);
   this.sshHandler = this.mockHandlers.sshHandler;
 }
 

@@ -2,11 +2,17 @@ var Factory = function() {
   var machineState = 'INACTIVE';
   var serverState = 'SHUTOFF';
   var PbHandler = function() {
+    // Allows to have the mock respond with either failure or success.
+    // Only applies to start, stop, update methods.
+    var successState = true;
     var that = this;
     var cores = 1;
     var ram = 2048;
     // Milliseconds to simulate time to run a command.
     var commandExecutionTime = 1000;
+    var setSuccessState = function(bool) {
+      successState = bool;
+    }
     var setMachineState = function(state) {
       machineState = state;
     }
@@ -15,6 +21,9 @@ var Factory = function() {
     }
     var setCommandExecutionTime = function(milliseconds) {
       commandExecutionTime = milliseconds;
+    }
+    this.setSuccessState = function(bool) {
+      setSuccessState(bool);
     }
     this.setMachineState = function(state) {
       setMachineState(state);
@@ -61,10 +70,14 @@ var Factory = function() {
         machineState = 'INACTIVE';
         serverState = 'SHUTOFF';
         var startServer = function() {
-          apiCallback(null, {statusCode: 202}, '');
+          var err = successState ? null : 'error';
+          var statusCode = successState ? 202 : 500;
+          apiCallback(err, {statusCode: statusCode}, '');
           var serverRunning = function() {
-            machineState = 'AVAILABLE';
-            serverState = 'RUNNING';
+            if (successState) {
+              machineState = 'AVAILABLE';
+              serverState = 'RUNNING';
+            }
           }
           setTimeout(serverRunning, commandExecutionTime * 3);
         }
@@ -75,10 +88,14 @@ var Factory = function() {
         machineState = 'AVAILABLE';
         serverState = 'SHUTOFF';
         var stopServer = function() {
-          apiCallback(null, {statusCode: 202}, '');
+          var err = successState ? null : 'error';
+          var statusCode = successState ? 202 : 500;
+          apiCallback(err, {statusCode: statusCode}, '');
           var serverStopped = function() {
-            machineState = 'INACTIVE';
-            serverState = 'SHUTOFF';
+            if (successState) {
+              machineState = 'INACTIVE';
+              serverState = 'SHUTOFF';
+            }
           }
           setTimeout(serverStopped, commandExecutionTime * 3);
         }
@@ -87,14 +104,21 @@ var Factory = function() {
       updateServer: function updateServer(datacenterId, serverId, updateData, apiCallback) {
         console.log(arguments.callee.name + " called");
         var updateServer = function() {
-          var data = {
-            properties: {
-              name: "test name",
-              cores: updateData.properties.cores,
-              ram: updateData.properties.ram,
-            },
+          var err = successState ? null : 'error';
+          var statusCode = 500;
+          var data = null;
+          if (successState) {
+            statusCode = 202;
+            data = {
+              properties: {
+                name: "test name",
+                cores: updateData.properties.cores,
+                ram: updateData.properties.ram,
+              },
+            }
+            data = JSON.stringify(data);
           }
-          apiCallback(null, {statusCode: 202}, JSON.stringify(data));
+          apiCallback(err, {statusCode: statusCode}, data);
         }
         setTimeout(updateServer, commandExecutionTime);
       },
