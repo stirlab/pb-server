@@ -1,4 +1,4 @@
-var Factory = function() {
+var Factory = function(logger) {
   var machineState = 'INACTIVE';
   var serverState = 'SHUTOFF';
   var PbHandler = function() {
@@ -42,13 +42,13 @@ var Factory = function() {
         // Called by core pb lib.
       },
       listDatacenters: function listDatacenters(cb) {
-        console.log(arguments.callee.name + " called");
+        logger.debug(arguments.callee.name + " called");
       },
       listServers: function listServers(datacenterId, cb) {
-        console.log(arguments.callee.name + " called");
+        logger.debug(arguments.callee.name + " called");
       },
       getServer: function getServer(datacenterId, serverId, apiCallback) {
-        console.log(arguments.callee.name + " called");
+        logger.debug(arguments.callee.name + " called");
         var serverStatus = function() {
           var data = {
             metadata: {
@@ -66,7 +66,7 @@ var Factory = function() {
         setTimeout(serverStatus, commandExecutionTime);
       },
       startServer: function startServer(datacenterId, serverId, apiCallback) {
-        console.log(arguments.callee.name + " called");
+        logger.debug(arguments.callee.name + " called");
         machineState = 'INACTIVE';
         serverState = 'SHUTOFF';
         var startServer = function() {
@@ -84,7 +84,7 @@ var Factory = function() {
         setTimeout(startServer, commandExecutionTime);
       },
       stopServer: function stopServer(datacenterId, serverId, apiCallback) {
-        console.log(arguments.callee.name + " called");
+        logger.debug(arguments.callee.name + " called");
         machineState = 'AVAILABLE';
         serverState = 'SHUTOFF';
         var stopServer = function() {
@@ -102,7 +102,7 @@ var Factory = function() {
         setTimeout(stopServer, commandExecutionTime);
       },
       updateServer: function updateServer(datacenterId, serverId, updateData, apiCallback) {
-        console.log(arguments.callee.name + " called");
+        logger.debug(arguments.callee.name + " called");
         var updateServer = function() {
           var err = successState ? null : 'error';
           var statusCode = 500;
@@ -142,7 +142,7 @@ var Factory = function() {
     }
     var handler = {
       exec: function exec(command, config) {
-        console.log(arguments.callee.name + " called");
+        logger.debug(arguments.callee.name + " called");
         config && config.exit && config.exit(0, '', '');
         // This is a little clunky, but I don't see any elegant way to
         // penetrate the shutdown command with these mocks.
@@ -157,7 +157,7 @@ var Factory = function() {
         }
       },
       start: function setdepth(config) {
-        console.log(arguments.callee.name + " called");
+        logger.debug(arguments.callee.name + " called");
         var start = function() {
           config && config.success && config.success();
         }

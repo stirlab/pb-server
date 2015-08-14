@@ -3,7 +3,7 @@ var util = require('util');
 var libpb = require('libprofitbricks');
 var SSH = require('simple-ssh');
 var format = util.format;
-var mockHandlers = require('./mock-handlers')();
+var mockHandlers = require('./mock-handlers');
 
 var dummyCb = function() {};
 // 5 seconds.
@@ -14,7 +14,6 @@ var MAX_QUERY_ATTEMPTS = 36;
 var PbServer = function(pb, ssh, logger) {
   this.pbHandler = libpb;
   this.sshHandler = SSH;
-  this.mockHandlers = mockHandlers;
   this.pb = pb;
   this.ssh = ssh;
 
@@ -25,6 +24,8 @@ var PbServer = function(pb, ssh, logger) {
     this.logger = console;
     this.logger.debug = this.logger.log;
   }
+  this.mockHandlers = mockHandlers(this.logger);
+
   this.stateChangeQueryInterval = pb.stateChangeQueryInterval ? pb.stateChangeQueryInterval : SERVER_QUERY_INTERVAL;
   this.maxStateChangeQueryAttempts = pb.maxStateChangeQueryAttempts ? pb.maxStateChangeQueryAttempts : MAX_QUERY_ATTEMPTS;
   this.sshKey = ssh.key ? fs.readFileSync(ssh.key) : null;
