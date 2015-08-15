@@ -83,6 +83,12 @@ PbServer.prototype.useMockHandlers = function(successStates) {
   this.sshHandler = this.mockHandlers.sshHandler;
 }
 
+PbServer.prototype.useLiveHandlers = function() {
+  this.maxStateChangeQueryAttempts = MAX_QUERY_ATTEMPTS;
+  this.pbHandler = libpb;
+  this.sshHandler = SSH;
+}
+
 PbServer.prototype.listDatacenters = function(cb) {
   var self = this;
   cb = cb ? cb : dummyCb;
