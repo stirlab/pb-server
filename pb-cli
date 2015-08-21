@@ -38,26 +38,49 @@ function bytesToSize(bytes) {
 
 switch (args[0]) {
   case 'start':
-    pb.startServerTracked();
+    var cb = function(err, data) {
+      if (err) {
+        log(format("ERROR: %s, %s", err, data));
+      }
+    }
+    pb.startServerTracked(cb);
     break;
   case 'stop':
-    var cb = function(err, data) {
+    var shutdownCb = function(err, data) {
+      if (err) {
+        log(format("ERROR: %s, %s", err, data));
+      }
       // Even if there was a failure in shutdown, we still want to stop, so no
       // need to verify what happened here.
-      pb.stopServerTracked();
+      var stopCb = function(err, data) {
+        if (err) {
+          log(format("ERROR: %s, %s", err, data));
+        }
+      }
+      pb.stopServerTracked(stopCb);
+    }
+    pb.shutdownServerTracked(shutdownCb);
+    break;
+  case 'shutdown':
+    var cb = function(err, data) {
+      if (err) {
+        log(format("ERROR: %s, %s", err, data));
+      }
     }
     pb.shutdownServerTracked(cb);
     break;
-  case 'shutdown':
-    pb.shutdownServerTracked();
-    break;
   case 'hard-stop':
-    pb.stopServerTracked();
+    var cb = function(err, data) {
+      if (err) {
+        log(format("ERROR: %s, %s", err, data));
+      }
+    }
+    pb.stopServerTracked(cb);
     break;
   case 'status':
     var cb = function(err, data) {
       if (err) {
-        log(format("ERROR: %s", err));
+        log(format("ERROR: %s, %s", err, data));
       }
       else {
         var name = data.properties.name;
@@ -77,7 +100,10 @@ switch (args[0]) {
   case 'update':
     var profile = args[1];
     var cb = function(err, data) {
-      if (!err) {
+      if (err) {
+        log(format("ERROR: %s, %s", err, data));
+      }
+      else {
         log("Server updated!");
         var name = data.properties.name;
         var cores = data.properties.cores;
@@ -96,7 +122,7 @@ switch (args[0]) {
   case 'datacenters':
     var cb = function(err, data) {
       if (err) {
-        log(format("ERROR: %s", err));
+        log(format("ERROR: %s, %s", err, data));
       }
       else {
         var iterator = function (val, idx, array) {
@@ -110,7 +136,7 @@ switch (args[0]) {
   case 'servers':
     var cb = function(err, data) {
       if (err) {
-        log(format("ERROR: %s", err));
+        log(format("ERROR: %s, %s", err, data));
       }
       else {
         var iterator = function (val, idx, array) {

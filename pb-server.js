@@ -38,14 +38,14 @@ var PbServer = function(pb, ssh, logger) {
     cb = cb ? cb : dummyCb;
     var postCommand = function(err, resp, body) {
       if (err) {
-        self.logger.error('%s command returned error: %s', command, err);
-        cb(err);
+        self.logger.error(format('%s command returned error: %s, %s', command, err, body));
+        cb(err, body);
       }
       else {
         var stateChangeCallback = function(err, data) {
           if (err) {
-            self.logger.error('State change returned error: %s', err);
-            cb(err);
+            self.logger.error(format('State change returned error: %s, %s', err, data));
+            cb(err, data);
           }
           else {
             self.logger.info(message);
@@ -68,6 +68,20 @@ var PbServer = function(pb, ssh, logger) {
 
   this.stopServerTracked = function(cb) {
     _tracked('stopServer', 'INACTIVE', 'SHUTOFF', 'Server stopped!', cb);
+  }
+
+  var parseBody = function(body) {
+    try {
+      var data = JSON.parse(body);
+      return [null, data];
+    }
+    catch(err) {
+      return [err, body];
+    }
+  }
+
+  this.parseBody = function(body) {
+    return parseBody(body);
   }
 }
 
@@ -94,12 +108,12 @@ PbServer.prototype.listDatacenters = function(cb) {
   cb = cb ? cb : dummyCb;
   var apiCallback = function(err, resp, body) {
     if (err) {
-      self.logger.error(format("ERROR: %s", err));
-      cb(err);
+      self.logger.error(format("ERROR: %s, %s", err, body));
+      cb(err, body);
     }
     else {
-      var data = JSON.parse(body);
-      cb(null, data);
+      var result = self.parseBody(body);
+      cb.apply(self, result);
     }
   }
   this.logger.info("Getting datacenter info...");
@@ -111,12 +125,12 @@ PbServer.prototype.listServers = function(cb) {
   cb = cb ? cb : dummyCb;
   var apiCallback = function(err, resp, body) {
     if (err) {
-      self.logger.error(format("ERROR: %s", err));
-      cb(err);
+      self.logger.error(format("ERROR: %s, %s", err, body));
+      cb(err, body);
     }
     else {
-      var data = JSON.parse(body);
-      cb(null, data);
+      var result = self.parseBody(body);
+      cb.apply(self, result);
     }
   }
   this.logger.info("Listing servers...");
@@ -128,12 +142,12 @@ PbServer.prototype.getServer = function(cb) {
   cb = cb ? cb : dummyCb;
   var apiCallback = function(err, resp, body) {
     if (err) {
-      self.logger.error(format("ERROR: %s", err));
-      cb(err);
+      self.logger.error(format("ERROR: %s, %s", err, body));
+      cb(err, body);
     }
     else {
-      var data = JSON.parse(body);
-      cb(null, data);
+      var result = self.parseBody(body);
+      cb.apply(self, result);
     }
   }
   this.logger.info("Getting server status...");
@@ -197,8 +211,9 @@ PbServer.prototype.serverStateChange = function(machineToState, serverToState, c
   var count = 1;
   var checkState = function(err, data) {
     if (err) {
-      self.logger.error(format("ERROR: %s", err));
-      cb(err);
+      self.logger.error(format("ERROR: %s, %s", err, data));
+      cb(err, data);
+      count++;
     }
     else {
       if (count > self.maxStateChangeQueryAttempts) {
@@ -292,12 +307,12 @@ PbServer.prototype.updateServer = function(profile, cb) {
   cb = cb ? cb : dummyCb;
   var apiCallback = function(err, resp, body) {
     if (err) {
-      self.logger.error(format("ERROR: %s", err));
-      cb(err);
+      self.logger.error(format("ERROR: %s, %s", err, body));
+      cb(err, body);
     }
     else {
-      var data = JSON.parse(body);
-      cb(null, data);
+      var result = self.parseBody(body);
+      cb.apply(self, result);
     }
   }
   this.logger.info(format("Updating server to profile: %s", profile));
