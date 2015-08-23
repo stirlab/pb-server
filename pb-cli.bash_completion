@@ -1,0 +1,49 @@
+#!/bin/bash
+
+_pb_cli()
+{
+  COMPREPLY=()
+  cur="${COMP_WORDS[COMP_CWORD]}"
+  prev="${COMP_WORDS[COMP_CWORD-1]}"
+  prev_prev="${COMP_WORDS[COMP_CWORD-2]}"
+  if [ $COMP_CWORD == 1 ]; then
+    local pb_commands="check-fs datacenters hard-stop servers shutdown start status stop update"
+    COMPREPLY=($(compgen -W "${pb_commands}" -- ${cur}))
+    return 0
+  elif [ $COMP_CWORD == 2 ]; then
+    case "$prev" in
+      "check-fs")
+        ;&
+      "hard-stop")
+        ;&
+      "shutdown")
+        ;&
+      "start")
+        ;&
+      "stop")
+        ;&
+      "status")
+        ;&
+      "update")
+        local pb_labels=$( pb-cli labels )
+        COMPREPLY=($(compgen -W "${pb_labels}" -- ${cur}))
+        ;;
+      *)
+        ;;
+    esac
+    return 0
+  elif [ $COMP_CWORD == 3 ]; then
+    case "$prev_prev" in
+      "update")
+        local pb_profiles=$( pb-cli profiles )
+        COMPREPLY=($(compgen -W "${pb_profiles}" -- ${cur}))
+        ;;
+      *)
+        ;;
+    esac
+    return 0
+  fi
+  return 0
+}
+complete -F _pb_cli pb-cli
+
