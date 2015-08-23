@@ -12,4 +12,4 @@ cp config.js.sample config.js
 Edit config.js to taste.
 
 ## Usage
-Run ```pb-cli``` without arguments for script usage.
+Run ```pb``` without arguments for script usage.
