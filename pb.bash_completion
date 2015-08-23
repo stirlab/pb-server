@@ -1,6 +1,6 @@
 #!/bin/bash
 
-_pb_cli()
+_pb()
 {
   COMPREPLY=()
   cur="${COMP_WORDS[COMP_CWORD]}"
@@ -25,7 +25,7 @@ _pb_cli()
       "status")
         ;&
       "update")
-        local pb_labels=$( pb-cli labels )
+        local pb_labels=$( pb labels )
         COMPREPLY=($(compgen -W "${pb_labels}" -- ${cur}))
         ;;
       *)
@@ -35,7 +35,7 @@ _pb_cli()
   elif [ $COMP_CWORD == 3 ]; then
     case "$prev_prev" in
       "update")
-        local pb_profiles=$( pb-cli profiles )
+        local pb_profiles=$( pb profiles )
         COMPREPLY=($(compgen -W "${pb_profiles}" -- ${cur}))
         ;;
       *)
@@ -45,5 +45,5 @@ _pb_cli()
   fi
   return 0
 }
-complete -F _pb_cli pb-cli
+complete -F _pb pb
 
