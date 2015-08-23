@@ -170,7 +170,7 @@ var Factory = function(logger) {
             break;
         }
       },
-      start: function setdepth(config) {
+      start: function start(config) {
         logger.debug(arguments.callee.name + " called");
         var start = function() {
           config && config.success && config.success();
