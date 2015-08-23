@@ -59,15 +59,15 @@ var PbServer = function(pb, ssh, logger) {
   }
 
   this.startServerTracked = function(serverLabel, cb) {
-    _tracked(serverLabel, 'startServer', 'AVAILABLE', 'RUNNING', 'Server started!', cb);
+    _tracked(serverLabel, 'startServer', 'AVAILABLE', 'RUNNING', format("Server '%s' started!", serverLabel), cb);
   }
 
   this.shutdownServerTracked = function(serverLabel, cb) {
-    _tracked(serverLabel, 'shutdownServer', 'AVAILABLE', 'SHUTOFF', 'Server shut down!', cb);
+    _tracked(serverLabel, 'shutdownServer', 'AVAILABLE', 'SHUTOFF', format("Server '%s' shut down!", serverLabel), cb);
   }
 
   this.stopServerTracked = function(serverLabel, cb) {
-    _tracked(serverLabel, 'stopServer', 'INACTIVE', 'SHUTOFF', 'Server stopped!', cb);
+    _tracked(serverLabel, 'stopServer', 'INACTIVE', 'SHUTOFF', format("Server '%s' stopped!", serverLabel), cb);
   }
 
   var parseBody = function(body) {
@@ -187,21 +187,21 @@ PbServer.prototype.getServer = function(serverLabel, cb) {
       cb.apply(self, result);
     }
   }
-  this.logger.info("Getting server status...");
+  this.logger.info(format("Getting server status for '%s'...", serverLabel));
   this.pbHandler.getServer(this.pb.datacenterId, config.serverId, apiCallback)
 }
 
 PbServer.prototype.startServer = function(serverLabel, cb) {
   var config = this.configFromLabel(serverLabel, cb);
   if (!config) { return; }
-  this.logger.info("Starting server...");
+  this.logger.info(format("Starting server '%s'...", serverLabel));
   this.pbHandler.startServer(this.pb.datacenterId, config.serverId, cb)
 }
 
 PbServer.prototype.stopServer = function(serverLabel, cb) {
   var config = this.configFromLabel(serverLabel, cb);
   if (!config) { return; }
-  this.logger.info("Powering off server...");
+  this.logger.info(format("Powering off server '%s'...", serverLabel));
   this.pbHandler.stopServer(this.pb.datacenterId, config.serverId, cb)
 }
 
@@ -210,7 +210,7 @@ PbServer.prototype.shutdownServer = function(serverLabel, cb) {
   if (!config) { return; }
   var self = this;
   cb = cb ? cb : dummyCb;
-  this.logger.info("Shutting down server...");
+  this.logger.info(format("Shutting down server '%s'...", serverLabel));
   var ssh = new this.sshHandler({
     host: config.sshHost,
     port: config.sshPort,
@@ -268,13 +268,13 @@ PbServer.prototype.serverStateChange = function(serverLabel, machineToState, ser
       else {
         var machineState = data.metadata.state;
         var serverState = data.properties.vmState;
-        self.logger.debug(format("Attempt #%d", count));
+        self.logger.debug(format("Attempt #%d for '%s'", count, serverLabel));
         self.logger.debug("-------------------------------------");
         self.logger.debug(format("Machine state: %s", machineState));
         self.logger.debug(format("Server state: %s", serverState));
         self.logger.debug("-------------------------------------");
         if (machineState == machineToState && serverState == serverToState) {
-          self.logger.info(format("State change to (%s, %s) complete", machineToState , serverToState));
+          self.logger.info(format("State change to (%s, %s) complete for '%s'", machineToState , serverToState, serverLabel));
           clearInterval(serverStateChange);
           cb(null, data);
         }
@@ -285,7 +285,7 @@ PbServer.prototype.serverStateChange = function(serverLabel, machineToState, ser
   var get = function() {
     self.getServer(serverLabel, checkState);
   }
-  this.logger.info(format("Waiting for server state to change to (%s, %s)", machineToState , serverToState));
+  this.logger.info(format("Waiting for '%s' server state to change to (%s, %s)", serverLabel, machineToState , serverToState));
   get();
   var serverStateChange = setInterval(get, this.stateChangeQueryInterval);
 }
@@ -298,7 +298,7 @@ PbServer.prototype.checkCommand = function(serverLabel, command, cb) {
   var count = 1;
   // This prevents overlapping checks and messages.
   var timeout = this.stateChangeQueryInterval - 1000;
-  this.logger.debug(format("Checking command: %s", command));
+  this.logger.debug(format("Checking command: '%s' on '%s'", command, serverLabel));
   this.logger.debug(format("SSH connection timeout set to %d milliseconds", timeout));
   var exit = function(code, stdout, stderr) {
     if (code === 0) {
@@ -329,7 +329,7 @@ PbServer.prototype.checkCommand = function(serverLabel, command, cb) {
       cb(message);
     }
     else {
-      self.logger.debug(format("Attempt #%d", count));
+      self.logger.debug(format("Attempt #%d on '%s'", count, serverLabel));
       var ssh = new self.sshHandler({
         host: config.sshHost,
         port: config.sshPort,
@@ -362,7 +362,7 @@ PbServer.prototype.updateServer = function(serverLabel, profile, cb) {
       cb.apply(self, result);
     }
   }
-  this.logger.info(format("Updating server to profile: %s", profile));
+  this.logger.info(format("Updating server '%s' to profile: %s", serverLabel, profile));
   var data = this.pb.profiles[profile];
   if (data) {
     var updateData = {
