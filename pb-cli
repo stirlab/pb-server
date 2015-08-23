@@ -154,31 +154,22 @@ switch (args[0]) {
     }
     pb.listServers(cb);
     break;
-  case 'commands':
-    var commands = [
-      "check-fs",
-      "commands",
-      "datacenters",
-      "hard-stop",
-      "labels",
-      "servers",
-      "shutdown",
-      "start",
-      "status",
-      "stop",
-      "update",
-    ];
-    process.stdout.write(commands.join('\n'));
-    break;
   case 'labels':
     var labels = [];
     for (label in config.pb.serverIds) {
       labels.push(label);
     }
-    process.stdout.write(labels.join("\n"));
+    process.stdout.write(labels.join(" "));
+    break;
+  case 'profiles':
+    var profiles = [];
+    for (profile in config.pb.profiles) {
+      profiles.push(profile);
+    }
+    process.stdout.write(profiles.join(" "));
     break;
   default:
-    log("Usage: " + program + " <start <server-label>|stop <server-label>|shutdown <server-label>|hard-stop <server-label>|status <server-label>|update <server-label> <profile>|check-fs <server-label>|datacenters|servers|commands|labels>");
+    log("Usage: " + program + " <start <server-label>|stop <server-label>|shutdown <server-label>|hard-stop <server-label>|status <server-label>|update <server-label> <profile>|check-fs <server-label>|datacenters|servers>");
 }
 
 // vi: ft=javascript
