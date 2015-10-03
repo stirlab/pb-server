@@ -1,3 +1,5 @@
+var path = require('path');
+
 var Factory = function(logger) {
   var machineState = 'INACTIVE';
   var serverState = 'SHUTOFF';
@@ -150,9 +152,9 @@ var Factory = function(logger) {
         // This is a little clunky, but I don't see any elegant way to
         // penetrate more with these mocks.
         var parts = command.split(/\s+/);
-        var baseCommand = parts[0] == 'sudo' ? parts[1] : parts[0];
+        var baseCommand = parts[0] == 'sudo' ? path.basename(parts[1]) : path.basename(parts[0]);
         switch(baseCommand) {
-          case '/sbin/shutdown':
+          case 'shutdown':
             config && config.exit && config.exit(0, '', '');
             machineState = 'AVAILABLE';
             serverState = 'RUNNING';
