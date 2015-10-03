@@ -149,7 +149,8 @@ var Factory = function(logger) {
         logger.debug(arguments.callee.name + " called");
         // This is a little clunky, but I don't see any elegant way to
         // penetrate more with these mocks.
-        var baseCommand = command.split(/\s+/)[0];
+        var parts = command.split(/\s+/);
+        var baseCommand = parts[0] == 'sudo' ? parts[1] : parts[0];
         switch(baseCommand) {
           case 'shutdown':
             config && config.exit && config.exit(0, '', '');
