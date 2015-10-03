@@ -243,9 +243,10 @@ PbServer.prototype.shutdownServer = function(serverLabel, cb) {
   }
   // Executing shutdown without backgrounding hangs, backgrounding the command
   // allows the shutdown to proceed, and our SSH command to get a return value.
-  // sudo allows a non-root user to be used for shutdown.
+  // sudo with the full path allows a non-root user to be used for shutdown,
+  // tested on Debian, YMMV on other systems.
   // NOTE: These commands kept separate to support the mock functionality.
-  ssh.exec('sudo shutdown -P now shutdown-now&', execConfig);
+  ssh.exec('sudo /sbin/shutdown -P now shutdown-now&', execConfig);
   ssh.start(startConfig);
 }
 

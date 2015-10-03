@@ -152,7 +152,7 @@ var Factory = function(logger) {
         var parts = command.split(/\s+/);
         var baseCommand = parts[0] == 'sudo' ? parts[1] : parts[0];
         switch(baseCommand) {
-          case 'shutdown':
+          case '/sbin/shutdown':
             config && config.exit && config.exit(0, '', '');
             machineState = 'AVAILABLE';
             serverState = 'RUNNING';
