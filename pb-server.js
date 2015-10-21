@@ -191,6 +191,25 @@ PbServer.prototype.getServer = function(serverLabel, cb) {
   this.pbHandler.getServer(this.pb.datacenterId, config.serverId, apiCallback)
 }
 
+PbServer.prototype.getNic = function(serverLabel, nicId, cb) {
+  var config = this.configFromLabel(serverLabel, cb);
+  if (!config) { return; }
+  var self = this;
+  cb = cb ? cb : dummyCb;
+  var apiCallback = function(err, resp, body) {
+    if (err) {
+      self.logger.error(format("ERROR: %s, %s", err, body));
+      cb(err, body);
+    }
+    else {
+      var result = self.parseBody(body);
+      cb.apply(self, result);
+    }
+  }
+  this.logger.info(format("Getting info for NIC '%s' on server '%s'...", nicId, serverLabel));
+  this.pbHandler.getNic(this.pb.datacenterId, config.serverId, nicId, apiCallback)
+}
+
 PbServer.prototype.startServer = function(serverLabel, cb) {
   var config = this.configFromLabel(serverLabel, cb);
   if (!config) { return; }

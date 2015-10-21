@@ -93,11 +93,21 @@ switch (args[0]) {
         var serverState = data.properties.vmState;
         var cores = data.properties.cores;
         var ram = data.properties.ram;
-        log(format("Name: %s", name));
-        log(format("Machine state: %s", machineState));
-        log(format("Server state: %s", serverState));
-        log(format("Cores: %d", cores));
-        log(format("RAM: %s", bytesToSize(ram * 1000000)));
+        var nicId = data.entities.nics.items[0].id;
+        var nicCb = function(err, data) {
+          if (err) {
+            log(format("ERROR: %s, %s", err, data));
+          }
+          else {
+            log(format("Name: %s", name));
+            log(format("Machine state: %s", machineState));
+            log(format("Server state: %s", serverState));
+            log(format("Cores: %d", cores));
+            log(format("RAM: %s", bytesToSize(ram * 1000000)));
+            log(format("IPs: %s", data.properties.ips));
+          }
+        }
+        pb.getNic(serverLabel, nicId, nicCb);
       }
     }
     pb.getServer(serverLabel, cb);

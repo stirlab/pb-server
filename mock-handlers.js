@@ -68,6 +68,9 @@ var Factory = function(logger) {
         }
         setTimeout(serverStatus, commandExecutionTime);
       },
+      getNic: function getNic(datacenterId, serverId, nicId, apiCallback) {
+        logger.debug(arguments.callee.name + " called");
+      },
       startServer: function startServer(datacenterId, serverId, apiCallback) {
         logger.debug(arguments.callee.name + " called");
         machineState = 'INACTIVE';
