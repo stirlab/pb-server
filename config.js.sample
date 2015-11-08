@@ -3,8 +3,13 @@ module.exports = {
     username: 'your profitbricks username',
     password: 'your profitbricks password',
     depth: 1,
-    datacenterId: 'datacenter id where the server is located',
-    serverId: 'server id',
+    // Only one datacenter per installation is supported at this time.
+    datacenterId: 'datacenter id where the servers are located',
+    serverIds: {
+      serverOne: 'server id of this server',
+      serverTwo: 'server id of this server',
+      serverThree: 'server id of this server',
+    },
     profiles: {
       dev: {
         cores: 1,
@@ -17,10 +22,24 @@ module.exports = {
     },
   },
   ssh: {
-    host: 'hostname to reach server via SSH',
+    serverOne: {
+      host: 'hostname or IP to reach server',
+    },
+    serverTwo: {
+      host: 'hostname or IP to reach server',
+    },
+    serverThree: {
+      host: 'hostname or IP to reach server',
+      port: 5000,
+      user: 'some other SSH username',
+      key: 'some other full path to private key for SSH access',
+    },
+    // These defaults apply to all SSH entries unless specifically overridden
+    // in the server config.
     port: 22,
-    user: 'root',
+    user: 'SSH username',
     key: 'full path to private key for SSH access',
   },
 }
 
+// vi: ft=javascript
