@@ -25,8 +25,12 @@ _pb()
       "status")
         ;&
       "update")
-        local pb_labels=$( pb labels )
-        COMPREPLY=($(compgen -W "${pb_labels}" -- ${cur}))
+        local pb_server_labels=$( pb serverLabels )
+        COMPREPLY=($(compgen -W "${pb_server_labels}" -- ${cur}))
+        ;;
+      "servers")
+        local pb_datacenter_labels=$( pb datacenterLabels )
+        COMPREPLY=($(compgen -W "${pb_datacenter_labels}" -- ${cur}))
         ;;
       *)
         ;;

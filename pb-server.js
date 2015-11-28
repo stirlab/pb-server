@@ -91,12 +91,15 @@ var PbServer = function(pb, ssh, logger) {
 
   var configFromLabel = function(label, cb) {
     try {
-      var serverId = self.pb.serverIds[label];
+      var datacenterLabel = self.pb.servers[label].datacenter;
+      var datacenterId = self.pb.datacenters[datacenterLabel];
+      var serverId = self.pb.servers[label].id;
       var sshHost = self.ssh[label].host;
       var sshPort = self.ssh[label].port || self.ssh.port;
       var sshUser = self.ssh[label].user || self.ssh.user;
-      if (serverId && sshHost && sshPort && sshUser) {
+      if (datacenterId && serverId && sshHost && sshPort && sshUser) {
         return {
+          datacenterId: datacenterId,
           serverId: serverId,
           sshHost: sshHost,
           sshPort: sshPort,
@@ -155,7 +158,7 @@ PbServer.prototype.listDatacenters = function(cb) {
   this.pbHandler.listDatacenters(apiCallback);
 }
 
-PbServer.prototype.listServers = function(cb) {
+PbServer.prototype.listServers = function(datacenterLabel, cb) {
   var self = this;
   cb = cb ? cb : dummyCb;
   var apiCallback = function(err, resp, body) {
@@ -168,8 +171,16 @@ PbServer.prototype.listServers = function(cb) {
       cb.apply(self, result);
     }
   }
-  this.logger.info("Listing servers...");
-  this.pbHandler.listServers(this.pb.datacenterId, apiCallback)
+  var datacenterId = this.pb.datacenters[datacenterLabel];
+  if (!datacenterId) {
+    var message = format("ERROR: datacenter label %s does not exist, or is misconfigured", datacenterLabel);
+    this.logger.error(message);
+    cb(message, null);
+  }
+  else {
+    this.logger.info(format("Listing servers for datacenter %s...", datacenterLabel));
+    this.pbHandler.listServers(datacenterId, apiCallback)
+  }
 }
 
 PbServer.prototype.getServer = function(serverLabel, cb) {
@@ -188,7 +199,7 @@ PbServer.prototype.getServer = function(serverLabel, cb) {
     }
   }
   this.logger.info(format("Getting server status for '%s'...", serverLabel));
-  this.pbHandler.getServer(this.pb.datacenterId, config.serverId, apiCallback)
+  this.pbHandler.getServer(config.datacenterId, config.serverId, apiCallback)
 }
 
 PbServer.prototype.getNic = function(serverLabel, nicId, cb) {
@@ -207,21 +218,21 @@ PbServer.prototype.getNic = function(serverLabel, nicId, cb) {
     }
   }
   this.logger.info(format("Getting info for NIC '%s' on server '%s'...", nicId, serverLabel));
-  this.pbHandler.getNic(this.pb.datacenterId, config.serverId, nicId, apiCallback)
+  this.pbHandler.getNic(config.datacenterId, config.serverId, nicId, apiCallback)
 }
 
 PbServer.prototype.startServer = function(serverLabel, cb) {
   var config = this.configFromLabel(serverLabel, cb);
   if (!config) { return; }
   this.logger.info(format("Starting server '%s'...", serverLabel));
-  this.pbHandler.startServer(this.pb.datacenterId, config.serverId, cb)
+  this.pbHandler.startServer(config.datacenterId, config.serverId, cb)
 }
 
 PbServer.prototype.stopServer = function(serverLabel, cb) {
   var config = this.configFromLabel(serverLabel, cb);
   if (!config) { return; }
   this.logger.info(format("Powering off server '%s'...", serverLabel));
-  this.pbHandler.stopServer(this.pb.datacenterId, config.serverId, cb)
+  this.pbHandler.stopServer(config.datacenterId, config.serverId, cb)
 }
 
 PbServer.prototype.shutdownServer = function(serverLabel, cb) {
@@ -389,7 +400,7 @@ PbServer.prototype.updateServer = function(serverLabel, profile, cb) {
     var updateData = {
       properties: data,
     }
-    this.pbHandler.updateServer(this.pb.datacenterId, config.serverId, updateData, apiCallback);
+    this.pbHandler.updateServer(config.datacenterId, config.serverId, updateData, apiCallback);
   }
   else {
     this.logger.error(format("ERROR: profile '%s' does not exist", profile));

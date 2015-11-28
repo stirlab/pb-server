@@ -151,6 +151,7 @@ switch (args[0]) {
     pb.listDatacenters(cb);
     break;
   case 'servers':
+    var datacenterLabel = args[1];
     var cb = function(err, data) {
       if (err) {
         log(format("ERROR: %s, %s", err, data));
@@ -162,11 +163,18 @@ switch (args[0]) {
         data.items.forEach(iterator);
       }
     }
-    pb.listServers(cb);
+    pb.listServers(datacenterLabel, cb);
     break;
-  case 'labels':
+  case 'datacenterLabels':
     var labels = [];
-    for (label in config.pb.serverIds) {
+    for (label in config.pb.datacenters) {
+      labels.push(label);
+    }
+    process.stdout.write(labels.join(" "));
+    break;
+  case 'serverLabels':
+    var labels = [];
+    for (label in config.pb.servers) {
       labels.push(label);
     }
     process.stdout.write(labels.join(" "));
