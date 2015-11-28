@@ -4,11 +4,23 @@ module.exports = {
     password: 'your profitbricks password',
     depth: 1,
     // Only one datacenter per installation is supported at this time.
-    datacenterId: 'datacenter id where the servers are located',
-    serverIds: {
-      serverOne: 'server id of this server',
-      serverTwo: 'server id of this server',
-      serverThree: 'server id of this server',
+    datacenters: {
+      datacenterLabel1: 'datacenter id where some servers are located',
+      datacenterLabel2: 'datacenter id where some other servers are located',
+    },
+    servers: {
+      serverOne: {
+        id: 'server id of this server',
+        datacenter: 'datacenterLabel1',
+      },
+      serverTwo: {
+        id: 'server id of this server',
+        datacenter: 'datacenterLabel1',
+      },
+      serverThree: {
+        id: 'server id of this server',
+        datacenter: 'datacenterLabel2',
+      },
     },
     profiles: {
       dev: {
