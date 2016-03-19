@@ -73,7 +73,16 @@ var PbServer = function(pb, ssh, logger) {
   var parseBody = function(body) {
     try {
       var data = JSON.parse(body);
-      return [null, data];
+      if (data.httpStatus && data.httpStatus != 200) {
+        var message = 'Unknown error';
+        if (data.messages && data.messages[0] && data.messages[0].message) {
+          message = data.messages[0].message;
+        }
+        return [message, body];
+      }
+      else {
+        return [null, data];
+      }
     }
     catch(err) {
       return [err, body];
