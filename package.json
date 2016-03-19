@@ -3,7 +3,7 @@
 , "private": true
 , "keywords": []
 , "homepage" : "https://github.com/thehunmonkgroup/pb-server"
-, "version" : "0.0.5"
+, "version" : "0.0.6"
 , "engines" : { "node" : ">=0.8.0" }
 , "dependencies": {
     "simple-ssh": "0.8.6"
