@@ -7,7 +7,7 @@
 , "engines" : { "node" : ">=0.8.0" }
 , "dependencies": {
     "simple-ssh": "0.8.6"
-    , "libprofitbricks": "1.6.23"
+    , "libprofitbricks": "1.6.24"
   }
 , "maintainers" :
   [ { "name": "Chad Phillips"
