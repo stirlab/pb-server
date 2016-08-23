@@ -7,7 +7,7 @@ servers.
 git clone https://github.com/thehunmonkgroup/pb-server.git
 cd pb-server
 npm install
-cp config.js.sample config.js
+cp config.sample.js config.js
 ```
 
 Edit config.js to taste.
