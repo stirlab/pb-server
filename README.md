@@ -1,6 +1,13 @@
 # pb-server
-Small library to manage safely starting and stopping profitbricks.com virtual
-servers.
+Small library to manage profitbricks.com virtual servers.
+
+The following operations are supported:
+ * Start
+ * Stop (safe, issues shutdown command first)
+ * Shutdown (safe, issues shutdown command to server before powering off)
+ * Hard stop
+ * Update cores and RAM based on configured 'profiles'
+ * Get basic server status information (state, cores, RAM)
 
 ## Installation
 ```
