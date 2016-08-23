@@ -3,7 +3,6 @@ module.exports = {
     username: 'your profitbricks username',
     password: 'your profitbricks password',
     depth: 1,
-    // Only one datacenter per installation is supported at this time.
     datacenters: {
       datacenterLabel1: 'datacenter id where some servers are located',
       datacenterLabel2: 'datacenter id where some other servers are located',
@@ -34,14 +33,13 @@ module.exports = {
     },
   },
   ssh: {
-    serverOne: {
-      host: 'hostname or IP to reach server',
-    },
+    // Supplying the host as below is optional, if not provided, the IP
+    // address from the server will be used.
     serverTwo: {
       host: 'hostname or IP to reach server',
     },
+    // port, user, and key can be overridden per server.
     serverThree: {
-      host: 'hostname or IP to reach server',
       port: 5000,
       user: 'some other SSH username',
       key: 'some other full path to private key for SSH access',
