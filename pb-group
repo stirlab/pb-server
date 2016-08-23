@@ -1,0 +1,213 @@
+#!/usr/bin/env node
+
+var path = require('path');
+var util = require('util');
+var format = util.format;
+
+var args = process.argv.slice(1);
+var program = path.basename(args.shift());
+
+var async = require('async');
+var PbServer = require('./pb-server');
+
+var log = function() {
+  console.log.apply(this, arguments);
+}
+
+var config = require('./config');
+
+var pb = new PbServer(config.pb, config.ssh);
+// Uncomment this to use the mock handlers, with success responses.
+// Actions not included in the array will mock a failure state.
+//pb.useMockHandlers(['start', 'stop', 'update', 'service']);
+
+var debugCallback = function(err, data) {
+  if (err) {
+    log("ERROR: " + String(err));
+  }
+  else {
+    log(data);
+  }
+}
+
+function bytesToSize(bytes) {
+   var sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+   if (bytes == 0) return '0 Byte';
+   var i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+   return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
+};
+
+var executeFuncs = function(groupLabel, serverFunc) {
+  var funcs = [];
+  if (config.pb.groups[groupLabel]) {
+    config.pb.groups[groupLabel].forEach(function(serverLabel) {
+      var func = serverFunc(serverLabel);
+      funcs.push(func);
+    });
+    async.parallel(funcs, function(err, results) {
+      if (err) {
+        log(format("ERROR: %s", err));
+      }
+      else {
+        results.forEach(function(result) {
+          log(result);
+        });
+      }
+    });
+  }
+  else {
+    log(format("ERROR: group %s does not exist", groupLabel));
+  }
+}
+
+switch (args[0]) {
+  case 'start':
+    var groupLabel = args[1];
+    var startServerFunc = function(serverLabel) {
+      return function(next) {
+        var cb = function(err, data) {
+          if (err) {
+            log(format("ERROR: %s, %s", err, data));
+            return next(format("Failed to start server %s", serverLabel));
+          }
+          else {
+            return next(null, format("Started server %s", serverLabel));
+          }
+        }
+        pb.startServerTracked(serverLabel, cb);
+      }
+    }
+    executeFuncs(groupLabel, startServerFunc);
+    break;
+  case 'stop':
+    var groupLabel = args[1];
+    var stopServerFunc = function(serverLabel) {
+      return function(next) {
+        var shutdownCb = function(err, data) {
+          if (err) {
+            log(format("ERROR: %s, %s", err, data));
+          }
+          // Even if there was a failure in shutdown, we still want to stop, so no
+          // need to verify what happened here.
+          var stopCb = function(err, data) {
+            if (err) {
+              log(format("ERROR: %s, %s", err, data));
+              return next(format("Failed to stop server %s", serverLabel));
+            }
+            else {
+              return next(null, format("Stopped server %s", serverLabel));
+            }
+          }
+          pb.stopServerTracked(serverLabel, stopCb);
+        }
+        pb.shutdownServerTracked(serverLabel, shutdownCb);
+      }
+    }
+    executeFuncs(groupLabel, stopServerFunc);
+    break;
+  case 'shutdown':
+    var groupLabel = args[1];
+    var shutdownServerFunc = function(serverLabel) {
+      return function(next) {
+        var shutdownCb = function(err, data) {
+          if (err) {
+            log(format("ERROR: %s, %s", err, data));
+            return next(format("Failed to shutdown server %s", serverLabel));
+          }
+          else {
+            return next(null, format("Shutdown server %s", serverLabel));
+          }
+        }
+        pb.shutdownServerTracked(serverLabel, shutdownCb);
+      }
+    }
+    executeFuncs(groupLabel, shutdownServerFunc);
+    break;
+  case 'hard-stop':
+    var groupLabel = args[1];
+    var stopServerFunc = function(serverLabel) {
+      return function(next) {
+        var stopCb = function(err, data) {
+          if (err) {
+            log(format("ERROR: %s, %s", err, data));
+            return next(format("Failed to hard stop server %s", serverLabel));
+          }
+          else {
+            return next(null, format("Hard stopped server %s", serverLabel));
+          }
+        }
+        pb.stopServerTracked(serverLabel, stopCb);
+      }
+    }
+    executeFuncs(groupLabel, stopServerFunc);
+    break;
+  case 'status':
+    var groupLabel = args[1];
+    var getServerFunc = function(serverLabel) {
+      return function(next) {
+        var getCb = function(err, data) {
+          if (err) {
+            log(format("ERROR: %s, %s", err, data));
+            return next(format("Failed to get server %s", serverLabel));
+          }
+          else {
+            var name = data.properties.name;
+            var machineState = data.metadata.state;
+            var serverState = data.properties.vmState;
+            var cores = data.properties.cores;
+            var ram = data.properties.ram;
+            var nicId = data.entities.nics.items[0].id;
+            var nicCb = function(err, data) {
+              if (err) {
+                log(format("ERROR: %s, %s", err, data));
+                return next(format("Failed to get server %s NIC info", serverLabel));
+              }
+              else {
+                var info = format("Name: %s\nMachine state: %s\nServer state: %s\nCores: %d\nRAM: %s\nIPs: %s", name, machineState, serverState, cores, bytesToSize(ram * 1000000), data.properties.ips);
+                return next(null, format("Got info for server %s\n", serverLabel) + info);
+              }
+            }
+            pb.getNic(serverLabel, nicId, nicCb);
+          }
+        }
+        pb.getServer(serverLabel, getCb);
+      }
+    }
+    executeFuncs(groupLabel, getServerFunc);
+
+    var cb = function(err, data) {
+      if (err) {
+        log(format("ERROR: %s, %s", err, data));
+      }
+      else {
+      }
+    }
+    break;
+  case 'update':
+    var groupLabel = args[1];
+    var profile = args[2];
+    var updateServerFunc = function(serverLabel) {
+      return function(next) {
+        var updateCb = function(err, data) {
+          if (err) {
+            log(format("ERROR: %s, %s", err, data));
+            return next(format("Failed to update server %s", serverLabel));
+          }
+          else {
+            var name = data.properties.name;
+            var cores = data.properties.cores;
+            var ram = data.properties.ram;
+            var stats = format("Name: %s\nCores: %d\nRAM: %s", name, cores, bytesToSize(ram * 1000000));
+            return next(null, format("Updated server %s\n", serverLabel) + stats);
+          }
+        }
+        pb.updateServer(serverLabel, profile, updateCb);
+      }
+    }
+    executeFuncs(groupLabel, updateServerFunc);
+    break;
+  default:
+    log("Usage: " + program + " start <group-label> | stop <group-label> | shutdown <group-label> | hard-stop <group-label> | status <group-label> | update <group-label> <profile>");
+}
+
+// vi: ft=javascript

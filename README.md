@@ -17,6 +17,7 @@ Edit config.js to taste.
 ### CLI
 
 Run ```pb``` without arguments for script usage.
+Run ```pb-group``` without arguments for script usage.
 
 ### As a node module.
 

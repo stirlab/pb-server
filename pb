@@ -179,6 +179,13 @@ switch (args[0]) {
     }
     process.stdout.write(labels.join(" "));
     break;
+  case 'groupLabels':
+    var labels = [];
+    for (label in config.pb.groups) {
+      labels.push(label);
+    }
+    process.stdout.write(labels.join(" "));
+    break;
   case 'profiles':
     var profiles = [];
     for (profile in config.pb.profiles) {

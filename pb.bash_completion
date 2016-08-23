@@ -49,5 +49,50 @@ _pb()
   fi
   return 0
 }
+
+_pb_group()
+{
+  COMPREPLY=()
+  cur="${COMP_WORDS[COMP_CWORD]}"
+  prev="${COMP_WORDS[COMP_CWORD-1]}"
+  prev_prev="${COMP_WORDS[COMP_CWORD-2]}"
+  if [ $COMP_CWORD == 1 ]; then
+    local pb_group_commands="hard-stop shutdown start status stop update"
+    COMPREPLY=($(compgen -W "${pb_group_commands}" -- ${cur}))
+    return 0
+  elif [ $COMP_CWORD == 2 ]; then
+    case "$prev" in
+      "hard-stop")
+        ;&
+      "shutdown")
+        ;&
+      "start")
+        ;&
+      "stop")
+        ;&
+      "status")
+        ;&
+      "update")
+        local pb_group_labels=$( pb groupLabels )
+        COMPREPLY=($(compgen -W "${pb_group_labels}" -- ${cur}))
+        ;;
+      *)
+        ;;
+    esac
+    return 0
+  elif [ $COMP_CWORD == 3 ]; then
+    case "$prev_prev" in
+      "update")
+        local pb_profiles=$( pb profiles )
+        COMPREPLY=($(compgen -W "${pb_profiles}" -- ${cur}))
+        ;;
+      *)
+        ;;
+    esac
+    return 0
+  fi
+  return 0
+}
 complete -F _pb pb
+complete -F _pb_group pb-group
 
