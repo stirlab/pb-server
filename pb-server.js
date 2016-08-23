@@ -103,10 +103,10 @@ var PbServer = function(pb, ssh, logger) {
       var datacenterLabel = self.pb.servers[label].datacenter;
       var datacenterId = self.pb.datacenters[datacenterLabel];
       var serverId = self.pb.servers[label].id;
-      var sshHost = self.ssh[label].host;
-      var sshPort = self.ssh[label].port || self.ssh.port;
-      var sshUser = self.ssh[label].user || self.ssh.user;
-      if (datacenterId && serverId && sshHost && sshPort && sshUser) {
+      var sshHost = self.ssh[label] && self.ssh[label].host || null;
+      var sshPort = self.ssh[label] && self.ssh[label].port || self.ssh.port;
+      var sshUser = self.ssh[label] && self.ssh[label].user || self.ssh.user;
+      if (datacenterId && serverId && sshPort && sshUser) {
         return {
           datacenterId: datacenterId,
           serverId: serverId,
@@ -130,6 +130,45 @@ var PbServer = function(pb, ssh, logger) {
     return configFromLabel(label, cb);
   }
 
+  var verifyHostConfig = function(config, cb) {
+    if (config.sshHost) {
+      cb(null, config);
+    }
+    else {
+      self.logger.info(format("Getting info for IP on server '%s'...", config.serverId));
+      var getServerCallback = function(err, resp, body) {
+        if (err) {
+          self.logger.error(format("ERROR: %s, %s", err, body));
+          cb(err);
+        }
+        else {
+          var result = self.parseBody(body);
+          var data = result[1];
+          var nicId = data.entities.nics.items[0].id;
+          var nicCb = function(err, resp, body) {
+            if (err) {
+              self.logger.error(format("ERROR: %s, %s", err, body));
+              cb(err);
+            }
+            else {
+              var result = self.parseBody(body);
+              var data = result[1];
+              var serverIp = data.properties.ips[0];
+              self.logger.info(format("Found IP: %s", serverIp));
+              config.sshHost = serverIp;
+              cb(null, config);
+            }
+          }
+          self.pbHandler.getNic(config.datacenterId, config.serverId, nicId, nicCb)
+        }
+      }
+      self.pbHandler.getServer(config.datacenterId, config.serverId, getServerCallback);
+    }
+  }
+
+  this.verifyHostConfig = function(config, cb) {
+    return verifyHostConfig(config, cb);
+  }
 }
 
 PbServer.prototype.setMockHandlers = function(handlers) {
@@ -250,43 +289,48 @@ PbServer.prototype.shutdownServer = function(serverLabel, cb) {
   var self = this;
   cb = cb ? cb : dummyCb;
   this.logger.info(format("Shutting down server '%s'...", serverLabel));
-  var ssh = new this.sshHandler({
-    host: config.sshHost,
-    port: config.sshPort,
-    user: config.sshUser,
-    key: this.sshKey,
-  });
-  var exit = function(code, stdout, stderr) {
-    self.logger.debug(format("SSH command exit code: %s", code));
-    if (code === 0) {
-      self.logger.debug("Shutdown command execution succeeded...");
-      cb(null, code);
+  var verifyHostConfigCallback = function(err, newConfig) {
+    if (err) { return err; }
+    config = newConfig;
+    var ssh = new self.sshHandler({
+      host: config.sshHost,
+      port: config.sshPort,
+      user: config.sshUser,
+      key: self.sshKey,
+    });
+    var exit = function(code, stdout, stderr) {
+      self.logger.debug(format("SSH command exit code: %s", code));
+      if (code === 0) {
+        self.logger.debug("Shutdown command execution succeeded...");
+        cb(null, code);
+      }
+      else {
+        var message = format('SSH command returned with error code: %d, %s', code, stderr);
+        self.logger.error(message);
+        cb(message);
+      }
     }
-    else {
-      var message = format('SSH command returned with error code: %d, %s', code, stderr);
-      self.logger.error(message);
-      cb(message);
+    var execConfig = {
+      exit: exit,
+    };
+    var startConfig = {
+      success: function() {
+        self.logger.debug("SSH connection successful...");
+      },
+      fail: function(err) {
+        self.logger.debug(format("SSH connection failed: %s", err));
+        cb(err);
+      },
     }
+    // Executing shutdown without backgrounding hangs, backgrounding the command
+    // allows the shutdown to proceed, and our SSH command to get a return value.
+    // sudo with the full path allows a non-root user to be used for shutdown,
+    // tested on Debian, YMMV on other systems.
+    // NOTE: These commands kept separate to support the mock functionality.
+    ssh.exec('sudo /sbin/shutdown -P now shutdown-now&', execConfig);
+    ssh.start(startConfig);
   }
-  var execConfig = {
-    exit: exit,
-  };
-  var startConfig = {
-    success: function() {
-      self.logger.debug("SSH connection successful...");
-    },
-    fail: function(err) {
-      self.logger.debug(format("SSH connection failed: %s", err));
-      cb(err);
-    },
-  }
-  // Executing shutdown without backgrounding hangs, backgrounding the command
-  // allows the shutdown to proceed, and our SSH command to get a return value.
-  // sudo with the full path allows a non-root user to be used for shutdown,
-  // tested on Debian, YMMV on other systems.
-  // NOTE: These commands kept separate to support the mock functionality.
-  ssh.exec('sudo /sbin/shutdown -P now shutdown-now&', execConfig);
-  ssh.start(startConfig);
+  self.verifyHostConfig(config, verifyHostConfigCallback);
 }
 
 PbServer.prototype.serverStateChange = function(serverLabel, machineToState, serverToState, cb) {
@@ -336,56 +380,61 @@ PbServer.prototype.checkCommand = function(serverLabel, command, cb) {
   if (!config) { return; }
   var self = this;
   cb = cb ? cb : dummyCb;
-  var count = 1;
-  // This prevents overlapping checks and messages.
-  var timeout = this.stateChangeQueryInterval - 1000;
-  this.logger.debug(format("Checking command: '%s' on '%s'", command, serverLabel));
-  this.logger.debug(format("SSH connection timeout set to %d milliseconds", timeout));
-  var exit = function(code, stdout, stderr) {
-    if (code === 0) {
-      clearInterval(checkCommand);
-      self.logger.info("Command succeeded");
-      cb(null, code);
+  var verifyHostConfigCallback = function(err, newConfig) {
+    if (err) { return err; }
+    config = newConfig;
+    var count = 1;
+    // This prevents overlapping checks and messages.
+    var timeout = self.stateChangeQueryInterval - 1000;
+    self.logger.debug(format("Checking command: '%s' on '%s'", command, serverLabel));
+    self.logger.debug(format("SSH connection timeout set to %d milliseconds", timeout));
+    var exit = function(code, stdout, stderr) {
+      if (code === 0) {
+        clearInterval(checkCommand);
+        self.logger.info("Command succeeded");
+        cb(null, code);
+      }
+      else {
+        self.logger.debug(format('Command returned with error code: %d, %s', code, stderr));
+      }
     }
-    else {
-      self.logger.debug(format('Command returned with error code: %d, %s', code, stderr));
+    var execConfig = {
+      exit: exit,
+    };
+    var startConfig = {
+      success: function() {
+        self.logger.debug("SSH connection successful...");
+      },
+      fail: function(err) {
+        self.logger.debug(format("SSH connection failed: %s", err));
+      },
     }
+    var check = function() {
+      if (count > self.maxStateChangeQueryAttempts) {
+        clearInterval(checkCommand);
+        var message = "Max attempts exceeded.";
+        self.logger.error(message);
+        cb(message);
+      }
+      else {
+        self.logger.debug(format("Attempt #%d on '%s'", count, serverLabel));
+        var ssh = new self.sshHandler({
+          host: config.sshHost,
+          port: config.sshPort,
+          user: config.sshUser,
+          key: self.sshKey,
+          timeout: timeout,
+        });
+        // NOTE: These commands kept separate to support the mock functionality.
+        ssh.exec(command, execConfig);
+        ssh.start(startConfig);
+        count++;
+      }
+    }
+    check();
+    var checkCommand = setInterval(check, self.stateChangeQueryInterval);
   }
-  var execConfig = {
-    exit: exit,
-  };
-  var startConfig = {
-    success: function() {
-      self.logger.debug("SSH connection successful...");
-    },
-    fail: function(err) {
-      self.logger.debug(format("SSH connection failed: %s", err));
-    },
-  }
-  var check = function() {
-    if (count > self.maxStateChangeQueryAttempts) {
-      clearInterval(checkCommand);
-      var message = "Max attempts exceeded.";
-      self.logger.error(message);
-      cb(message);
-    }
-    else {
-      self.logger.debug(format("Attempt #%d on '%s'", count, serverLabel));
-      var ssh = new self.sshHandler({
-        host: config.sshHost,
-        port: config.sshPort,
-        user: config.sshUser,
-        key: self.sshKey,
-        timeout: timeout,
-      });
-      // NOTE: These commands kept separate to support the mock functionality.
-      ssh.exec(command, execConfig);
-      ssh.start(startConfig);
-      count++;
-    }
-  }
-  check();
-  var checkCommand = setInterval(check, this.stateChangeQueryInterval);
+  self.verifyHostConfig(config, verifyHostConfigCallback);
 }
 
 PbServer.prototype.updateServer = function(serverLabel, profile, cb) {
