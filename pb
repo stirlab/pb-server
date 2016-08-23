@@ -194,7 +194,7 @@ switch (args[0]) {
     process.stdout.write(profiles.join(" "));
     break;
   default:
-    log("Usage: " + program + " <start <server-label>|stop <server-label>|shutdown <server-label>|hard-stop <server-label>|status <server-label>|update <server-label> <profile>|check-fs <server-label>|datacenters|servers>");
+    log("Usage: " + program + " start <server-label> | stop <server-label> | shutdown <server-label> | hard-stop <server-label> | status <server-label> | update <server-label> <profile> | check-fs <server-label> | datacenters | servers>");
 }
 
 // vi: ft=javascript
