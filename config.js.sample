@@ -8,18 +8,26 @@ module.exports = {
       datacenterLabel2: 'datacenter id where some other servers are located',
     },
     servers: {
-      serverOne: {
+      serverLabelOne: {
         id: 'server id of this server',
         datacenter: 'datacenterLabel1',
       },
-      serverTwo: {
+      serverLabelTwo: {
         id: 'server id of this server',
         datacenter: 'datacenterLabel1',
       },
-      serverThree: {
+      serverLabelThree: {
         id: 'server id of this server',
         datacenter: 'datacenterLabel2',
       },
+    },
+    // Groups are used by the pb-group command.
+    groups: {
+      groupLabelAll: [
+        'serverLabelOne',
+        'serverLabelTwo',
+        'serverLabelThree',
+      ],
     },
     profiles: {
       dev: {
@@ -35,11 +43,11 @@ module.exports = {
   ssh: {
     // Supplying the host as below is optional, if not provided, the IP
     // address from the server will be used.
-    serverTwo: {
+    serverLabelTwo: {
       host: 'hostname or IP to reach server',
     },
     // port, user, and key can be overridden per server.
-    serverThree: {
+    serverLabelThree: {
       port: 5000,
       user: 'some other SSH username',
       key: 'some other full path to private key for SSH access',

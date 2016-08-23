@@ -27,7 +27,7 @@ var config = require('./config');
 var pb = new PbServer(config.pb, config.ssh);
 
 // Use the label for the server as defined in config.js, serverIds object.
-var serverName = 'serverOne';
+var serverName = 'serverLabelOne';
 var cb = function(err, data) {
   if (err) {
     console.log(format("ERROR: %s, %s", err, data));
