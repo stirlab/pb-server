@@ -16,7 +16,10 @@ Edit config.js to taste.
 
 ### CLI
 
+#### For commands on individual servers.
 Run ```pb``` without arguments for script usage.
+
+#### For commands on groups of servers.
 Run ```pb-group``` without arguments for script usage.
 
 ### As a node module.
@@ -37,4 +40,4 @@ var cb = function(err, data) {
 pb.getServer(serverName, cb);
 ```
 
-See pb-server.js for all currently supported methods.
+See ```pb-server.js``` for all currently supported methods, and ```pb``` for more usage examples.
