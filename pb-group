@@ -8,6 +8,7 @@ var args = process.argv.slice(1);
 var program = path.basename(args.shift());
 
 var async = require('async');
+var hostile = require('hostile')
 var PbServer = require('./pb-server');
 
 var log = function() {
@@ -112,6 +113,72 @@ var getStatus = function(groupLabel, cb) {
   executeFuncs(groupLabel, getServerFunc, cb);
 }
 
+var managedHosts = function(groupLabel) {
+  if (config.pb.groups[groupLabel] && config.pb.groups[groupLabel].servers) {
+    if (config.pb.groups[groupLabel].manageHostsFile) {
+      return config.pb.groups[groupLabel].manageHostsFile;
+    }
+    else if (config.pb.groups.manageHostsFile) {
+      return config.pb.groups.manageHostsFile;
+    }
+    else {
+      return false;
+    }
+  }
+  else {
+    log(format("ERROR: group %s does not exist", groupLabel));
+    return false;
+  }
+}
+
+var addHosts = function(groupLabel) {
+  if (managedHosts(groupLabel)) {
+    var statusCb = function(err, results) {
+      if (err) {
+        log(format("ERROR: %s", err));
+      }
+      else {
+        results.forEach(function(data) {
+          var ip = data.ips[0];
+          hostile.set(ip, data.serverLabel, function (err) {
+            if (err) {
+              log(format("ERROR: cannot set hosts entry for server %s, IP %s: %s", data.serverLabel, ip, err));
+            }
+            else {
+              log(format("Set hosts entry for server %s, IP %s", data.serverLabel, ip));
+            }
+          });
+        });
+      }
+    }
+    getStatus(groupLabel, statusCb);
+  }
+}
+
+var removeHosts = function(groupLabel) {
+  if (managedHosts(groupLabel)) {
+    var statusCb = function(err, results) {
+      if (err) {
+        log(format("ERROR: %s", err));
+      }
+      else {
+        results.forEach(function(data) {
+          var ip = data.ips[0];
+          hostile.remove(ip, data.serverLabel, function (err) {
+            if (err) {
+              log(format("ERROR: cannot remove hosts entry for server %s, IP %s: %s", data.serverLabel, ip, err));
+            }
+            else {
+              log(format("Removed hosts entry for server %s, IP %s", data.serverLabel, ip));
+            }
+          });
+        });
+      }
+    }
+    getStatus(groupLabel, statusCb);
+  }
+}
+
 switch (args[0]) {
   case 'start':
     var groupLabel = args[1];
@@ -130,6 +197,7 @@ switch (args[0]) {
       }
     }
     executeFuncs(groupLabel, startServerFunc);
+    addHosts(groupLabel);
     break;
   case 'stop':
     var groupLabel = args[1];
@@ -156,6 +224,7 @@ switch (args[0]) {
       }
     }
     executeFuncs(groupLabel, stopServerFunc);
+    removeHosts(groupLabel);
     break;
   case 'shutdown':
     var groupLabel = args[1];
@@ -174,6 +243,7 @@ switch (args[0]) {
       }
     }
     executeFuncs(groupLabel, shutdownServerFunc);
+    removeHosts(groupLabel);
     break;
   case 'hard-stop':
     var groupLabel = args[1];
@@ -192,6 +262,7 @@ switch (args[0]) {
       }
     }
     executeFuncs(groupLabel, stopServerFunc);
+    removeHosts(groupLabel);
     break;
   case 'status':
     var groupLabel = args[1];

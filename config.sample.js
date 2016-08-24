@@ -42,8 +42,6 @@ module.exports = {
       // enabling easier SSH access. The server label will be used as the DNS
       // name.
       // The setting here controls the behavior for all configured groups.
-      // NOTE: if this is enabled, the NPM package 'hostile' must be
-      // installed and in the require path.
       manageHostsFile: false,
     },
     profiles: {
