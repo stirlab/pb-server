@@ -182,7 +182,12 @@ switch (args[0]) {
   case 'groupLabels':
     var labels = [];
     for (label in config.pb.groups) {
-      labels.push(label);
+      var skip = [
+        'manageHostsFile',
+      ];
+      if(skip.indexOf(label) == -1) {
+        labels.push(label);
+      }
     }
     process.stdout.write(labels.join(" "));
     break;
