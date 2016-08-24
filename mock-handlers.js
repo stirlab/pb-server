@@ -63,13 +63,30 @@ var Factory = function(logger) {
               cores: cores,
               ram: ram,
             },
-          }
+            entities: {
+              nics: {
+                items: [
+                  {
+                    id: 'nic',
+                  }
+                ],
+              },
+            },
+          };
           apiCallback(null, {statusCode: 200}, JSON.stringify(data));
         }
         setTimeout(serverStatus, commandExecutionTime);
       },
       getNic: function getNic(datacenterId, serverId, nicId, apiCallback) {
         logger.debug(arguments.callee.name + " called");
+        var data = {
+          properties: {
+            ips: [
+              '192.168.99.99',
+            ],
+          },
+        };
+        apiCallback(null, {statusCode: 200}, JSON.stringify(data));
       },
       startServer: function startServer(datacenterId, serverId, apiCallback) {
         logger.debug(arguments.callee.name + " called");
