@@ -39,8 +39,8 @@ function bytesToSize(bytes) {
 
 var executeFuncs = function(groupLabel, serverFunc) {
   var funcs = [];
-  if (config.pb.groups[groupLabel]) {
-    config.pb.groups[groupLabel].forEach(function(serverLabel) {
+  if (config.pb.groups[groupLabel] && config.pb.groups[groupLabel].servers) {
+    config.pb.groups[groupLabel].servers.forEach(function(serverLabel) {
       var func = serverFunc(serverLabel);
       funcs.push(func);
     });
