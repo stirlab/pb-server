@@ -294,7 +294,7 @@ switch (args[0]) {
       else {
         results.forEach(function(data) {
             var info = format("Name: %s\nMachine state: %s\nServer state: %s\nCores: %d\nRAM: %s\nIPs: %s", data.name, data.machineState, data.serverState, data.cores, data.ram, data.ips);
-            log(format("Got info for server %s\n", data.serverLabel) + info);
+            log(format("\n\nGot info for server %s\n", data.serverLabel) + info);
         });
       }
     }
