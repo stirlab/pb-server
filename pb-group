@@ -45,7 +45,7 @@ var executeFuncs = function(groupLabel, serverFunc, cb) {
       var func = serverFunc(serverLabel);
       funcs.push(func);
     });
-    async.parallel(funcs, function(err, results) {
+    async.series(funcs, function(err, results) {
       if (err) {
         if (cb) {
           cb(err);
