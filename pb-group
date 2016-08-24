@@ -37,7 +37,7 @@ function bytesToSize(bytes) {
    return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
 };
 
-var executeFuncs = function(groupLabel, serverFunc) {
+var executeFuncs = function(groupLabel, serverFunc, cb) {
   var funcs = [];
   if (config.pb.groups[groupLabel] && config.pb.groups[groupLabel].servers) {
     config.pb.groups[groupLabel].servers.forEach(function(serverLabel) {
@@ -46,18 +46,70 @@ var executeFuncs = function(groupLabel, serverFunc) {
     });
     async.parallel(funcs, function(err, results) {
       if (err) {
-        log(format("ERROR: %s", err));
+        if (cb) {
+          cb(err);
+        }
+        else {
+          log(format("ERROR: %s", err));
+        }
       }
       else {
-        results.forEach(function(result) {
-          log(result);
-        });
+        if (cb) {
+          cb(null, results);
+        }
+        else {
+          results.forEach(function(result) {
+            log(result);
+          });
+        }
       }
     });
   }
   else {
     log(format("ERROR: group %s does not exist", groupLabel));
   }
+}
+
+var getStatus = function(groupLabel, cb) {
+  var getServerFunc = function(serverLabel) {
+    return function(next) {
+      var getCb = function(err, data) {
+        if (err) {
+          log(format("ERROR: %s, %s", err, data));
+          return next(format("Failed to get server %s", serverLabel));
+        }
+        else {
+          var name = data.properties.name;
+          var machineState = data.metadata.state;
+          var serverState = data.properties.vmState;
+          var cores = data.properties.cores;
+          var ram = bytesToSize(data.properties.ram * 1000000);
+          var nicId = data.entities.nics.items[0].id;
+          var nicCb = function(err, data) {
+            if (err) {
+              log(format("ERROR: %s, %s", err, data));
+              return next(format("Failed to get server %s NIC info", serverLabel));
+            }
+            else {
+              var status = {
+                serverLabel: serverLabel,
+                name: name,
+                machineState: machineState,
+                serverState: serverState,
+                cores: cores,
+                ram: ram,
+                ips: data.properties.ips,
+              }
+              return next(null, status);
+            }
+          }
+          pb.getNic(serverLabel, nicId, nicCb);
+        }
+      }
+      pb.getServer(serverLabel, getCb);
+    }
+  }
+  executeFuncs(groupLabel, getServerFunc, cb);
 }
 
 switch (args[0]) {
@@ -143,37 +195,18 @@ switch (args[0]) {
     break;
   case 'status':
     var groupLabel = args[1];
-    var getServerFunc = function(serverLabel) {
-      return function(next) {
-        var getCb = function(err, data) {
-          if (err) {
-            log(format("ERROR: %s, %s", err, data));
-            return next(format("Failed to get server %s", serverLabel));
-          }
-          else {
-            var name = data.properties.name;
-            var machineState = data.metadata.state;
-            var serverState = data.properties.vmState;
-            var cores = data.properties.cores;
-            var ram = data.properties.ram;
-            var nicId = data.entities.nics.items[0].id;
-            var nicCb = function(err, data) {
-              if (err) {
-                log(format("ERROR: %s, %s", err, data));
-                return next(format("Failed to get server %s NIC info", serverLabel));
-              }
-              else {
-                var info = format("Name: %s\nMachine state: %s\nServer state: %s\nCores: %d\nRAM: %s\nIPs: %s", name, machineState, serverState, cores, bytesToSize(ram * 1000000), data.properties.ips);
-                return next(null, format("Got info for server %s\n", serverLabel) + info);
-              }
-            }
-            pb.getNic(serverLabel, nicId, nicCb);
-          }
-        }
-        pb.getServer(serverLabel, getCb);
+    var statusCb = function(err, results) {
+      if (err) {
+        log(format("ERROR: %s", err));
+      }
+      else {
+        results.forEach(function(data) {
+            var info = format("Name: %s\nMachine state: %s\nServer state: %s\nCores: %d\nRAM: %s\nIPs: %s", data.name, data.machineState, data.serverState, data.cores, data.ram, data.ips);
+            log(format("Got info for server %s\n", data.serverLabel) + info);
+        });
       }
     }
-    executeFuncs(groupLabel, getServerFunc);
+    getStatus(groupLabel, statusCb);
     break;
   case 'update':
     var groupLabel = args[1];
