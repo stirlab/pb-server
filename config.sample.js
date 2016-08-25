@@ -19,6 +19,8 @@ module.exports = {
       serverLabelThree: {
         id: 'server id of this server',
         datacenter: 'datacenterLabel2',
+        // Can also be set per server, overrides main setting.
+        manageHostEntry: false,
       },
     },
     // Groups are used by the pb-group command.
@@ -35,14 +37,7 @@ module.exports = {
           'serverLabelOne',
           'serverLabelTwo',
         ],
-        // Can also be set per group, overrides main setting.
-        manageHostsFile: true,
       },
-      // If enabled, manages local DNS mappings for the servers, useful for
-      // enabling easier SSH access. The server label will be used as the DNS
-      // name.
-      // The setting here controls the behavior for all configured groups.
-      manageHostsFile: false,
     },
     profiles: {
       dev: {
@@ -54,6 +49,11 @@ module.exports = {
         ram: 10240,
       },
     },
+    // If enabled, manages local DNS mappings for the servers, useful for
+    // enabling easier SSH access. The server label will be used as the DNS
+    // name.
+    // The setting here controls the behavior for all configured servers.
+    manageHostEntry: true,
   },
   ssh: {
     // Supplying the host as below is optional, if not provided, the IP

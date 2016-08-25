@@ -125,85 +125,52 @@ var getGroupStatus = function(groupLabel, cb) {
   executeFuncs(groupLabel, getServerFunc, cb);
 }
 
-var managedHosts = function(groupLabel) {
-  if (config.pb.groups[groupLabel] && config.pb.groups[groupLabel].servers) {
-    if (config.pb.groups[groupLabel].manageHostsFile) {
-      return config.pb.groups[groupLabel].manageHostsFile;
+var managedHostEntry = function(serverLabel) {
+  if (config.pb.servers[serverLabel]) {
+    if (config.pb.servers[serverLabel].manageHostEntry) {
+      log(format("Found host entry config for server %s: %s", serverLabel, config.pb.servers[serverLabel].manageHostEntry));
+      return config.pb.servers[serverLabel].manageHostEntry;
     }
-    else if (config.pb.groups.manageHostsFile) {
-      return config.pb.groups.manageHostsFile;
+    else if (config.pb.manageHostEntry) {
+      log(format("Using global host entry config: %s", config.pb.manageHostEntry));
+      return config.pb.manageHostEntry;
     }
     else {
+      log("Host entry config disabled");
       return false;
     }
   }
   else {
-    log(format("ERROR: group %s does not exist", groupLabel));
+    log(format("ERROR: server %s does not exist", serverLabel));
     return false;
   }
 }
 
-var addHosts = function(groupLabel) {
-  if (managedHosts(groupLabel)) {
-    var statusCb = function(err, results) {
+var addHost = function(serverLabel, ip, cb) {
+  if (managedHostEntry(serverLabel)) {
+    hostile.set(ip, serverLabel, function (err) {
       if (err) {
-        log(format("ERROR: %s", err));
+        log(format("ERROR: cannot set hosts entry for server %s, IP %s: %s", serverLabel, ip, err));
       }
       else {
-        var setHostname = function(data) {
-          return function(next) {
-            var ip = data.ips[0];
-            hostile.set(ip, data.serverLabel, function (err) {
-              if (err) {
-                log(format("ERROR: cannot set hosts entry for server %s, IP %s: %s", data.serverLabel, ip, err));
-              }
-              else {
-                log(format("Set hosts entry for server %s, IP %s", data.serverLabel, ip));
-              }
-              next();
-            });
-          }
-        }
-        var funcs = [];
-        results.forEach(function(data) {
-          funcs.push(setHostname(data));
-        });
-        async.series(funcs);
+        log(format("Set hosts entry for server %s, IP %s", serverLabel, ip));
       }
-    }
-    getStatus(groupLabel, statusCb);
+      cb && cb();
+    });
   }
 }
 
-var removeHosts = function(groupLabel) {
-  if (managedHosts(groupLabel)) {
-    var statusCb = function(err, results) {
+var removeHost = function(serverLabel, ip, cb) {
+  if (managedHostEntry(serverLabel)) {
+    hostile.remove(ip, serverLabel, function (err) {
       if (err) {
-        log(format("ERROR: %s", err));
+        log(format("ERROR: cannot remove hosts entry for server %s, IP %s: %s", serverLabel, ip, err));
       }
       else {
-        var removeHostname = function(data) {
-          return function(next) {
-            var ip = data.ips[0];
-            hostile.remove(ip, data.serverLabel, function (err) {
-              if (err) {
-                log(format("ERROR: cannot remove hosts entry for server %s, IP %s: %s", data.serverLabel, ip, err));
-              }
-              else {
-                log(format("Removed hosts entry for server %s, IP %s", data.serverLabel, ip));
-              }
-              next();
-            });
-          }
-        }
-        var funcs = [];
-        results.forEach(function(data) {
-          funcs.push(removeHostname(data));
-        });
-        async.series(funcs);
+        log(format("Removed hosts entry for server %s, IP %s", serverLabel, ip));
       }
-    }
-    getStatus(groupLabel, statusCb);
+      cb && cb();
+    });
   }
 }
 
@@ -218,84 +185,111 @@ switch (args[0]) {
             return next(format("Failed to start server %s", serverLabel));
           }
           else {
-            return next(null, format("Started server %s", serverLabel));
+            var statusCb = function(err, data) {
+              if (err) {
+                log(format("ERROR: %s, %s", err, data));
+              }
+              else {
+                if (data.serverState == 'RUNNING') {
+                  addHost(serverLabel, data.ips[0]);
+                  return next(null, format("Started server %s", serverLabel));
+                }
+                else {
+                  return next(format("Server %s in invalid state for start: %s", serverLabel, data.serverState));
+                }
+              }
+            }
+            getServerStatus(serverLabel, statusCb);
           }
         }
         pb.startServerTracked(serverLabel, cb);
       }
     }
-    var doneCb = function(err, results) {
-      if (!err) {
-        // IP addresses are only available after the servers have been started.
-        addHosts(groupLabel);
-      }
-    }
-    executeFuncs(groupLabel, startServerFunc, doneCb);
+    executeFuncs(groupLabel, startServerFunc);
     break;
   case 'stop':
     var groupLabel = args[1];
     var stopServerFunc = function(serverLabel) {
       return function(next) {
-        var shutdownCb = function(err, data) {
-          if (err) {
-            log(format("ERROR: %s, %s", err, data));
-          }
-          // Even if there was a failure in shutdown, we still want to stop, so no
-          // need to verify what happened here.
+        var statusCb = function(err, statusData) {
           var stopCb = function(err, data) {
             if (err) {
               log(format("ERROR: %s, %s", err, data));
               return next(format("Failed to stop server %s", serverLabel));
             }
             else {
+              removeHost(serverLabel, statusData.ips[0]);
               return next(null, format("Stopped server %s", serverLabel));
             }
           }
-          pb.stopServerTracked(serverLabel, stopCb);
+          if (statusData.serverState == 'RUNNING') {
+            var shutdownCb = function(err, data) {
+              if (err) {
+                log(format("ERROR: %s, %s", err, data));
+              }
+              // Even if there was a failure in shutdown, we still want to stop, so no
+              // need to verify what happened here.
+              pb.stopServerTracked(serverLabel, stopCb);
+            }
+            pb.shutdownServerTracked(serverLabel, shutdownCb);
+          }
+          else {
+            pb.stopServerTracked(serverLabel, stopCb);
+          }
         }
-        pb.shutdownServerTracked(serverLabel, shutdownCb);
+        getServerStatus(serverLabel, statusCb);
       }
     }
     executeFuncs(groupLabel, stopServerFunc);
-    removeHosts(groupLabel);
     break;
   case 'shutdown':
     var groupLabel = args[1];
     var shutdownServerFunc = function(serverLabel) {
       return function(next) {
-        var shutdownCb = function(err, data) {
-          if (err) {
-            log(format("ERROR: %s, %s", err, data));
-            return next(format("Failed to shutdown server %s", serverLabel));
+        var statusCb = function(err, statusData) {
+          if (statusData.serverState == 'RUNNING') {
+            var shutdownCb = function(err, data) {
+              if (err) {
+                log(format("ERROR: %s, %s", err, data));
+                return next(format("Failed to shutdown server %s", serverLabel));
+              }
+              else {
+                return next(null, format("Shutdown server %s", serverLabel));
+              }
+            }
+            pb.shutdownServerTracked(serverLabel, shutdownCb);
           }
           else {
-            return next(null, format("Shutdown server %s", serverLabel));
+            log(format("WARN: Server %s in invalid state for shutdown: %s", serverLabel, statusData.serverState));
+            return next(null);
           }
         }
-        pb.shutdownServerTracked(serverLabel, shutdownCb);
+        getServerStatus(serverLabel, statusCb);
       }
     }
     executeFuncs(groupLabel, shutdownServerFunc);
-    removeHosts(groupLabel);
     break;
   case 'hard-stop':
     var groupLabel = args[1];
     var stopServerFunc = function(serverLabel) {
       return function(next) {
-        var stopCb = function(err, data) {
-          if (err) {
-            log(format("ERROR: %s, %s", err, data));
-            return next(format("Failed to hard stop server %s", serverLabel));
+        var statusCb = function(err, statusData) {
+          var stopCb = function(err, data) {
+            if (err) {
+              log(format("ERROR: %s, %s", err, data));
+              return next(format("Failed to hard stop server %s", serverLabel));
+            }
+            else {
+              removeHost(serverLabel, statusData.ips[0]);
+              return next(null, format("Hard stopped server %s", serverLabel));
+            }
           }
-          else {
-            return next(null, format("Hard stopped server %s", serverLabel));
-          }
+          pb.stopServerTracked(serverLabel, stopCb);
         }
-        pb.stopServerTracked(serverLabel, stopCb);
+        getServerStatus(serverLabel, statusCb);
       }
     }
     executeFuncs(groupLabel, stopServerFunc);
-    removeHosts(groupLabel);
     break;
   case 'status':
     var groupLabel = args[1];
