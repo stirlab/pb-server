@@ -71,43 +71,55 @@ var executeFuncs = function(groupLabel, serverFunc, cb) {
   }
 }
 
-var getStatus = function(groupLabel, cb) {
-  var getServerFunc = function(serverLabel) {
-    return function(next) {
-      var getCb = function(err, data) {
+var getServerStatus = function(serverLabel, cb) {
+  var getCb = function(err, data) {
+    if (err) {
+      log(format("ERROR: %s, %s", err, data));
+      return cb(format("Failed to get server %s", serverLabel));
+    }
+    else {
+      var name = data.properties.name;
+      var machineState = data.metadata.state;
+      var serverState = data.properties.vmState;
+      var cores = data.properties.cores;
+      var ram = bytesToSize(data.properties.ram * 1000000);
+      var nicId = data.entities.nics.items[0].id;
+      var nicCb = function(err, data) {
         if (err) {
           log(format("ERROR: %s, %s", err, data));
-          return next(format("Failed to get server %s", serverLabel));
+          return cb(format("Failed to get server %s NIC info", serverLabel));
         }
         else {
-          var name = data.properties.name;
-          var machineState = data.metadata.state;
-          var serverState = data.properties.vmState;
-          var cores = data.properties.cores;
-          var ram = bytesToSize(data.properties.ram * 1000000);
-          var nicId = data.entities.nics.items[0].id;
-          var nicCb = function(err, data) {
-            if (err) {
-              log(format("ERROR: %s, %s", err, data));
-              return next(format("Failed to get server %s NIC info", serverLabel));
-            }
-            else {
-              var status = {
-                serverLabel: serverLabel,
-                name: name,
-                machineState: machineState,
-                serverState: serverState,
-                cores: cores,
-                ram: ram,
-                ips: data.properties.ips,
-              }
-              return next(null, status);
-            }
+          var status = {
+            serverLabel: serverLabel,
+            name: name,
+            machineState: machineState,
+            serverState: serverState,
+            cores: cores,
+            ram: ram,
+            ips: data.properties.ips,
           }
-          pb.getNic(serverLabel, nicId, nicCb);
+          return cb(null, status);
         }
       }
-      pb.getServer(serverLabel, getCb);
+      pb.getNic(serverLabel, nicId, nicCb);
+    }
+  }
+  pb.getServer(serverLabel, getCb);
+}
+
+var getGroupStatus = function(groupLabel, cb) {
+  var getServerFunc = function(serverLabel) {
+    return function(next) {
+      var statusCb = function(err, data) {
+        if (err) {
+          return next(err);
+        }
+        else {
+          return next(null, data);
+        }
+      }
+      getServerStatus(serverLabel, statusCb);
     }
   }
   executeFuncs(groupLabel, getServerFunc, cb);
@@ -298,7 +310,7 @@ switch (args[0]) {
         });
       }
     }
-    getStatus(groupLabel, statusCb);
+    getGroupStatus(groupLabel, statusCb);
     break;
   case 'update':
     var groupLabel = args[1];
