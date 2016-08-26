@@ -38,14 +38,14 @@ function bytesToSize(bytes) {
    return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
 };
 
-var executeFuncs = function(groupLabel, serverFunc, cb) {
+var executeFuncs = function(groupLabel, serverFunc, method, cb) {
   var funcs = [];
   if (config.pb.groups[groupLabel] && config.pb.groups[groupLabel].servers) {
     config.pb.groups[groupLabel].servers.forEach(function(serverLabel) {
       var func = serverFunc(serverLabel);
       funcs.push(func);
     });
-    async.series(funcs, function(err, results) {
+    async[method](funcs, function(err, results) {
       if (err) {
         if (cb) {
           cb(err);
@@ -69,6 +69,14 @@ var executeFuncs = function(groupLabel, serverFunc, cb) {
   else {
     log(format("ERROR: group %s does not exist", groupLabel));
   }
+}
+
+var executeFuncsSeries = function(groupLabel, serverFunc, cb) {
+  executeFuncs(groupLabel, serverFunc, 'series', cb);
+}
+
+var executeFuncsParallel = function(groupLabel, serverFunc, cb) {
+  executeFuncs(groupLabel, serverFunc, 'parallel', cb);
 }
 
 var getServerStatus = function(serverLabel, cb) {
@@ -122,7 +130,7 @@ var getGroupStatus = function(groupLabel, cb) {
       getServerStatus(serverLabel, statusCb);
     }
   }
-  executeFuncs(groupLabel, getServerFunc, cb);
+  executeFuncsParallel(groupLabel, getServerFunc, cb);
 }
 
 var managedHostEntry = function(serverLabel) {
@@ -205,7 +213,7 @@ switch (args[0]) {
         pb.startServerTracked(serverLabel, cb);
       }
     }
-    executeFuncs(groupLabel, startServerFunc);
+    executeFuncsSeries(groupLabel, startServerFunc);
     break;
   case 'stop':
     var groupLabel = args[1];
@@ -240,7 +248,7 @@ switch (args[0]) {
         getServerStatus(serverLabel, statusCb);
       }
     }
-    executeFuncs(groupLabel, stopServerFunc);
+    executeFuncsSeries(groupLabel, stopServerFunc);
     break;
   case 'shutdown':
     var groupLabel = args[1];
@@ -267,7 +275,7 @@ switch (args[0]) {
         getServerStatus(serverLabel, statusCb);
       }
     }
-    executeFuncs(groupLabel, shutdownServerFunc);
+    executeFuncsSeries(groupLabel, shutdownServerFunc);
     break;
   case 'hard-stop':
     var groupLabel = args[1];
@@ -289,7 +297,7 @@ switch (args[0]) {
         getServerStatus(serverLabel, statusCb);
       }
     }
-    executeFuncs(groupLabel, stopServerFunc);
+    executeFuncsSeries(groupLabel, stopServerFunc);
     break;
   case 'status':
     var groupLabel = args[1];
@@ -301,6 +309,22 @@ switch (args[0]) {
         results.forEach(function(data) {
             var info = format("Name: %s\nMachine state: %s\nServer state: %s\nCores: %d\nRAM: %s\nIPs: %s", data.name, data.machineState, data.serverState, data.cores, data.ram, data.ips);
             log(format("\n\nGot info for server %s\n", data.serverLabel) + info);
+        });
+      }
+    }
+    getGroupStatus(groupLabel, statusCb);
+    break;
+  case 'state':
+    var groupLabel = args[1];
+    var statusCb = function(err, results) {
+      if (err) {
+        log(format("ERROR: %s", err));
+      }
+      else {
+        log(format("\n\nStates for group '%s':\n", groupLabel));
+        results.forEach(function(data) {
+            var info = format("%s: %s, %s (%d cores, %s RAM)", data.name, data.machineState, data.serverState, data.cores, data.ram);
+            log(info);
         });
       }
     }
@@ -327,10 +351,10 @@ switch (args[0]) {
         pb.updateServer(serverLabel, profile, updateCb);
       }
     }
-    executeFuncs(groupLabel, updateServerFunc);
+    executeFuncsParallel(groupLabel, updateServerFunc);
     break;
   default:
-    log("Usage: " + program + " start <group-label> | stop <group-label> | shutdown <group-label> | hard-stop <group-label> | status <group-label> | update <group-label> <profile>");
+    log("Usage: " + program + " start <group-label> | stop <group-label> | shutdown <group-label> | hard-stop <group-label> | status <group-label> | state <group-label> | update <group-label> <profile>");
 }
 
 // vi: ft=javascript
