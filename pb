@@ -444,8 +444,24 @@ switch (args[0]) {
     process.stdout.write(profiles.join(" "));
     break;
   default:
-    log("Usage: " + program + " start <server-label> | stop <server-label> | shutdown <server-label> | hard-stop <server-label> | status <server-label> | update <server-label> <profile> | check-fs <server-label> | datacenters | servers>");
-    log("Usage: " + program + " group start <group-label> | group stop <group-label> | group shutdown <group-label> | group hard-stop <group-label> | group status <group-label> | group update <group-label> <profile>");
+    log("Usage:");
+    log("");
+    log("  " + program + " datacenters");
+    log("  " + program + " servers <datacenter>");
+    log("  " + program + " start <server-label>");
+    log("  " + program + " stop <server-label>");
+    log("  " + program + " shutdown <server-label>");
+    log("  " + program + " hard-stop <server-label>");
+    log("  " + program + " status <server-label>");
+    log("  " + program + " update <server-label> <profile>");
+    log("  " + program + " check-fs <server-label>");
+    log("");
+    log("  " + program + " group start <group-label>");
+    log("  " + program + " group stop <group-label>");
+    log("  " + program + " group shutdown <group-label>");
+    log("  " + program + " group hard-stop <group-label>");
+    log("  " + program + " group status <group-label>");
+    log("  " + program + " group update <group-label> <profile>");
 }
 
 // vi: ft=javascript
