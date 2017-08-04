@@ -1,5 +1,5 @@
 { "name" : "pb-server"
-, "description" : "Small library to manage safely starting and stopping a profitbricks.com virtual server."
+, "description" : "Small library to manage safely starting and stopping profitbricks.com virtual servers."
 , "private": true
 , "keywords": []
 , "homepage" : "https://github.com/thehunmonkgroup/pb-server"
