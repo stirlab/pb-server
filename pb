@@ -6,7 +6,13 @@ var format = util.format;
 
 var args = process.argv.slice(1);
 var program = path.basename(args.shift());
+var isGroup = args[0] === 'group';
+if (isGroup) {
+  args.shift();
+}
 
+var async = require('async');
+var hostile = require('hostile')
 var PbServer = require('./pb-server');
 
 var log = function() {
@@ -36,107 +42,340 @@ function bytesToSize(bytes) {
    return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
 };
 
-switch (args[0]) {
-  case 'start':
-    var serverLabel = args[1];
-    var cb = function(err, data) {
-      if (err) {
-        log(format("ERROR: %s, %s", err, data));
-      }
+var nonGroupError = function(action) {
+  log(format("ERROR: '%s' cannot be called as a group action", action));
+};
+
+var executeFuncs = function(groupLabel, serverFunc, method, cb) {
+  var funcs = [];
+  if (isGroup) {
+    if (config.pb.groups[groupLabel] && config.pb.groups[groupLabel].servers) {
+      config.pb.groups[groupLabel].servers.forEach(function(serverLabel) {
+        var func = serverFunc(serverLabel);
+        funcs.push(func);
+      });
     }
-    pb.startServerTracked(serverLabel, cb);
-    break;
-  case 'stop':
-    var serverLabel = args[1];
-    var shutdownCb = function(err, data) {
+    else {
+      log(format("ERROR: group %s does not exist", groupLabel));
+    }
+  }
+  else {
+    var func = serverFunc(groupLabel);
+    funcs.push(func);
+  }
+  if (funcs.length > 0) {
+    async[method](funcs, function(err, results) {
       if (err) {
-        log(format("ERROR: %s, %s", err, data));
+        if (cb) {
+          cb(err);
+        }
+        else {
+          log(format("ERROR: %s", err));
+        }
       }
-      // Even if there was a failure in shutdown, we still want to stop, so no
-      // need to verify what happened here.
-      var stopCb = function(err, data) {
+      else {
+        if (cb) {
+          cb(null, results);
+        }
+        else {
+          results.forEach(function(result) {
+            log(result);
+          });
+        }
+      }
+    });
+  }
+}
+
+var executeFuncsSeries = function(groupLabel, serverFunc, cb) {
+  executeFuncs(groupLabel, serverFunc, 'series', cb);
+}
+
+var executeFuncsParallel = function(groupLabel, serverFunc, cb) {
+  executeFuncs(groupLabel, serverFunc, 'parallel', cb);
+}
+
+var getServerStatus = function(serverLabel, cb) {
+  var getCb = function(err, data) {
+    if (err) {
+      log(format("ERROR: %s, %s", err, data));
+      return cb(format("Failed to get server %s", serverLabel));
+    }
+    else {
+      var name = data.properties.name;
+      var machineState = data.metadata.state;
+      var serverState = data.properties.vmState;
+      var cores = data.properties.cores;
+      var ram = bytesToSize(data.properties.ram * 1000000);
+      var nicId = data.entities.nics.items[0].id;
+      var nicCb = function(err, data) {
         if (err) {
           log(format("ERROR: %s, %s", err, data));
+          return cb(format("Failed to get server %s NIC info", serverLabel));
+        }
+        else {
+          var status = {
+            serverLabel: serverLabel,
+            name: name,
+            machineState: machineState,
+            serverState: serverState,
+            cores: cores,
+            ram: ram,
+            ips: data.properties.ips,
+          }
+          return cb(null, status);
         }
       }
-      pb.stopServerTracked(serverLabel, stopCb);
+      pb.getNic(serverLabel, nicId, nicCb);
     }
-    pb.shutdownServerTracked(serverLabel, shutdownCb);
-    break;
-  case 'shutdown':
-    var serverLabel = args[1];
-    var cb = function(err, data) {
-      if (err) {
-        log(format("ERROR: %s, %s", err, data));
+  }
+  pb.getServer(serverLabel, getCb);
+}
+
+var getGroupStatus = function(groupLabel, cb) {
+  var getServerFunc = function(serverLabel) {
+    return function(next) {
+      var statusCb = function(err, data) {
+        if (err) {
+          return next(err);
+        }
+        else {
+          return next(null, data);
+        }
       }
+      getServerStatus(serverLabel, statusCb);
     }
-    pb.shutdownServerTracked(serverLabel, cb);
-    break;
-  case 'hard-stop':
-    var serverLabel = args[1];
-    var cb = function(err, data) {
-      if (err) {
-        log(format("ERROR: %s, %s", err, data));
-      }
+  }
+  executeFuncsParallel(groupLabel, getServerFunc, cb);
+}
+
+var managedHostEntry = function(serverLabel) {
+  if (config.pb.servers[serverLabel]) {
+    if (config.pb.servers[serverLabel].manageHostEntry) {
+      log(format("Found host entry config for server %s: %s", serverLabel, config.pb.servers[serverLabel].manageHostEntry));
+      return config.pb.servers[serverLabel].manageHostEntry;
     }
-    pb.stopServerTracked(serverLabel, cb);
-    break;
-  case 'status':
-    var serverLabel = args[1];
-    var cb = function(err, data) {
+    else if (config.pb.manageHostEntry) {
+      log(format("Using global host entry config: %s", config.pb.manageHostEntry));
+      return config.pb.manageHostEntry;
+    }
+    else {
+      log("Host entry config disabled");
+      return false;
+    }
+  }
+  else {
+    log(format("ERROR: server %s does not exist", serverLabel));
+    return false;
+  }
+}
+
+var addHost = function(serverLabel, ip, cb) {
+  if (managedHostEntry(serverLabel)) {
+    hostile.set(ip, serverLabel, function (err) {
       if (err) {
-        log(format("ERROR: %s, %s", err, data));
+        log(format("ERROR: cannot set hosts entry for server %s, IP %s: %s", serverLabel, ip, err));
       }
       else {
-        var name = data.properties.name;
-        var machineState = data.metadata.state;
-        var serverState = data.properties.vmState;
-        var cores = data.properties.cores;
-        var ram = data.properties.ram;
-        var nicId = data.entities.nics.items[0].id;
-        var nicCb = function(err, data) {
+        log(format("Set hosts entry for server %s, IP %s", serverLabel, ip));
+      }
+      cb && cb();
+    });
+  }
+}
+
+var removeHost = function(serverLabel, ip, cb) {
+  if (managedHostEntry(serverLabel)) {
+    hostile.remove(ip, serverLabel, function (err) {
+      if (err) {
+        log(format("ERROR: cannot remove hosts entry for server %s, IP %s: %s", serverLabel, ip, err));
+      }
+      else {
+        log(format("Removed hosts entry for server %s, IP %s", serverLabel, ip));
+      }
+      cb && cb();
+    });
+  }
+}
+
+switch (args[0]) {
+  case 'start':
+    var groupLabel = args[1];
+    var startServerFunc = function(serverLabel) {
+      return function(next) {
+        var cb = function(err, data) {
           if (err) {
             log(format("ERROR: %s, %s", err, data));
+            return next(format("Failed to start server %s", serverLabel));
           }
           else {
-            log(format("Name: %s", name));
-            log(format("Machine state: %s", machineState));
-            log(format("Server state: %s", serverState));
-            log(format("Cores: %d", cores));
-            log(format("RAM: %s", bytesToSize(ram * 1000000)));
-            log(format("IPs: %s", data.properties.ips));
+            var statusCb = function(err, data) {
+              if (err) {
+                log(format("ERROR: %s, %s", err, data));
+              }
+              else {
+                if (data.serverState == 'RUNNING') {
+                  addHost(serverLabel, data.ips[0]);
+                  return next(null, format("Started server %s", serverLabel));
+                }
+                else {
+                  return next(format("Server %s in invalid state for start: %s", serverLabel, data.serverState));
+                }
+              }
+            }
+            getServerStatus(serverLabel, statusCb);
           }
         }
-        pb.getNic(serverLabel, nicId, nicCb);
+        pb.startServerTracked(serverLabel, cb);
       }
     }
-    pb.getServer(serverLabel, cb);
+    executeFuncsSeries(groupLabel, startServerFunc);
     break;
-  case 'update':
-    var serverLabel = args[1];
-    var profile = args[2];
-    var cb = function(err, data) {
+  case 'stop':
+    var groupLabel = args[1];
+    var stopServerFunc = function(serverLabel) {
+      return function(next) {
+        var statusCb = function(err, statusData) {
+          var stopCb = function(err, data) {
+            if (err) {
+              log(format("ERROR: %s, %s", err, data));
+              return next(format("Failed to stop server %s", serverLabel));
+            }
+            else {
+              removeHost(serverLabel, statusData.ips[0]);
+              return next(null, format("Stopped server %s", serverLabel));
+            }
+          }
+          if (statusData.serverState == 'RUNNING') {
+            var shutdownCb = function(err, data) {
+              if (err) {
+                log(format("ERROR: %s, %s", err, data));
+              }
+              // Even if there was a failure in shutdown, we still want to stop, so no
+              // need to verify what happened here.
+              pb.stopServerTracked(serverLabel, stopCb);
+            }
+            pb.shutdownServerTracked(serverLabel, shutdownCb);
+          }
+          else {
+            pb.stopServerTracked(serverLabel, stopCb);
+          }
+        }
+        getServerStatus(serverLabel, statusCb);
+      }
+    }
+    executeFuncsSeries(groupLabel, stopServerFunc);
+    break;
+  case 'shutdown':
+    var groupLabel = args[1];
+    var shutdownServerFunc = function(serverLabel) {
+      return function(next) {
+        var statusCb = function(err, statusData) {
+          if (statusData.serverState == 'RUNNING') {
+            var shutdownCb = function(err, data) {
+              if (err) {
+                log(format("ERROR: %s, %s", err, data));
+                return next(format("Failed to shutdown server %s", serverLabel));
+              }
+              else {
+                return next(null, format("Shutdown server %s", serverLabel));
+              }
+            }
+            pb.shutdownServerTracked(serverLabel, shutdownCb);
+          }
+          else {
+            log(format("WARN: Server %s in invalid state for shutdown: %s", serverLabel, statusData.serverState));
+            return next(null);
+          }
+        }
+        getServerStatus(serverLabel, statusCb);
+      }
+    }
+    executeFuncsSeries(groupLabel, shutdownServerFunc);
+    break;
+  case 'hard-stop':
+    var groupLabel = args[1];
+    var stopServerFunc = function(serverLabel) {
+      return function(next) {
+        var statusCb = function(err, statusData) {
+          var stopCb = function(err, data) {
+            if (err) {
+              log(format("ERROR: %s, %s", err, data));
+              return next(format("Failed to hard stop server %s", serverLabel));
+            }
+            else {
+              removeHost(serverLabel, statusData.ips[0]);
+              return next(null, format("Hard stopped server %s", serverLabel));
+            }
+          }
+          pb.stopServerTracked(serverLabel, stopCb);
+        }
+        getServerStatus(serverLabel, statusCb);
+      }
+    }
+    executeFuncsSeries(groupLabel, stopServerFunc);
+    break;
+  case 'status':
+    var groupLabel = args[1];
+    var statusCb = function(err, results) {
       if (err) {
-        log(format("ERROR: %s, %s", err, data));
+        log(format("ERROR: %s", err));
       }
       else {
-        log("Server updated!");
-        var name = data.properties.name;
-        var cores = data.properties.cores;
-        var ram = data.properties.ram;
-        log(format("Name: %s", name));
-        log(format("Cores: %d", cores));
-        log(format("RAM: %s", bytesToSize(ram * 1000000)));
+        if (isGroup) {
+          log(format("\n\nStatuses for group '%s':\n", groupLabel));
+          results.forEach(function(data) {
+              var info = format("%s: %s, %s (%d cores, %s RAM)", data.name, data.machineState, data.serverState, data.cores, data.ram);
+              log(info);
+          });
+        }
+        else {
+          results.forEach(function(data) {
+              var info = format("Name: %s\nMachine state: %s\nServer state: %s\nCores: %d\nRAM: %s\nIPs: %s", data.name, data.machineState, data.serverState, data.cores, data.ram, data.ips);
+              log(format("\n\nGot info for server %s\n", data.serverLabel) + info);
+          });
+        }
       }
     }
-    pb.updateServer(serverLabel, profile, cb);
+    getGroupStatus(groupLabel, statusCb);
+    break;
+  case 'update':
+    var groupLabel = args[1];
+    var profile = args[2];
+    var updateServerFunc = function(serverLabel) {
+      return function(next) {
+        var updateCb = function(err, data) {
+          if (err) {
+            log(format("ERROR: %s, %s", err, data));
+            return next(format("Failed to update server %s", serverLabel));
+          }
+          else {
+            var name = data.properties.name;
+            var cores = data.properties.cores;
+            var ram = data.properties.ram;
+            var stats = format("Name: %s\nCores: %d\nRAM: %s", name, cores, bytesToSize(ram * 1000000));
+            return next(null, format("Updated server %s\n", serverLabel) + stats);
+          }
+        }
+        pb.updateServer(serverLabel, profile, updateCb);
+      }
+    }
+    executeFuncsParallel(groupLabel, updateServerFunc);
     break;
   case 'check-fs':
+    if (isGroup) {
+      nonGroupError(args[0]);
+      return;
+    }
     var serverLabel = args[1];
     log("Checking FreeSWITCH service...");
     pb.checkCommand(serverLabel, "service freeswitch status");
     break;
   case 'datacenters':
+    if (isGroup) {
+      nonGroupError(args[0]);
+      return;
+    }
     var cb = function(err, data) {
       if (err) {
         log(format("ERROR: %s, %s", err, data));
@@ -151,6 +390,10 @@ switch (args[0]) {
     pb.listDatacenters(cb);
     break;
   case 'servers':
+    if (isGroup) {
+      nonGroupError(args[0]);
+      return;
+    }
     var datacenterLabel = args[1];
     var cb = function(err, data) {
       if (err) {
@@ -200,6 +443,7 @@ switch (args[0]) {
     break;
   default:
     log("Usage: " + program + " start <server-label> | stop <server-label> | shutdown <server-label> | hard-stop <server-label> | status <server-label> | update <server-label> <profile> | check-fs <server-label> | datacenters | servers>");
+    log("Usage: " + program + " group start <group-label> | group stop <group-label> | group shutdown <group-label> | group hard-stop <group-label> | group status <group-label> | group update <group-label> <profile>");
 }
 
 // vi: ft=javascript
