@@ -151,13 +151,15 @@ var getGroupStatus = function(groupLabel, cb) {
 
 var managedHostEntry = function(serverLabel) {
   if (config.pb.servers[serverLabel]) {
-    if (config.pb.servers[serverLabel].manageHostEntry) {
-      log(format("Found host entry config for server %s: %s", serverLabel, config.pb.servers[serverLabel].manageHostEntry));
-      return config.pb.servers[serverLabel].manageHostEntry;
+    var serverEntry = config.pb.servers[serverLabel].manageHostEntry;
+    var globalEntry = config.pb.manageHostEntry;
+    if (serverEntry !== null && serverEntry !== undefined) {
+      log(format("Found host entry config for server %s: %s", serverLabel, serverEntry));
+      return serverEntry;
     }
-    else if (config.pb.manageHostEntry) {
-      log(format("Using global host entry config: %s", config.pb.manageHostEntry));
-      return config.pb.manageHostEntry;
+    else if (globalEntry !== null && globalEntry !== undefined) {
+      log(format("Using global host entry config: %s", globalEntry));
+      return globalEntry;
     }
     else {
       log("Host entry config disabled");
