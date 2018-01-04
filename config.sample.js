@@ -23,7 +23,7 @@ module.exports = {
         manageHostEntry: false,
       },
     },
-    // Groups are used by the pb-group command.
+    // Groups are used by the pb group command.
     groups: {
       groupLabelAll: {
         servers: [

@@ -8,6 +8,8 @@ The following operations are supported:
  * Hard stop
  * Update cores and RAM based on configured 'profiles'
  * Get basic server status information (state, cores, RAM)
+ * Run commands on groups of servers via custom configured groups
+ * Operate on servers in different datacenters
 
 Both a CLI executable and a Node.js library are provided.
 
@@ -28,7 +30,7 @@ the various configuration options.
 
 ### CLI
 
-#### For commands on individual servers.
+#### For commands on individual (or groups of configured) servers.
 Run ```pb``` without arguments for script usage.
 
 The CLI executable supports configuring 'groups' in the config file which
